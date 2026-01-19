@@ -311,6 +311,7 @@ frappe.pages['zatca-wizard'].on_page_load = function (wrapper) {
 					label: __("Integration Type"),
 					fieldtype: "Select",
 					options: ["Simulation", "Sandbox", "Production"],
+					default: "Sandbox",
 					onchange: function () {
 						const selectedIntegrationType = this.get_value();
 						if (selectedIntegrationType && selected_company) {
@@ -648,6 +649,14 @@ frappe.pages['zatca-wizard'].on_page_load = function (wrapper) {
 																if (current_dialog) {
 																	current_dialog.set_value("basic_auth_from_csid", encodedString);
 																	current_dialog.refresh();
+
+																	frappe.show_alert(
+																		{
+																			message: __("CSID generated successfully"),
+																			indicator: "green",
+																		},
+																		5 // seconds
+																	);
 																} else {
 																	frappe.msgprint(
 																		__("Dialog reference not found.")
@@ -694,9 +703,9 @@ frappe.pages['zatca-wizard'].on_page_load = function (wrapper) {
 				// 	label: __("Compliance Conditions"),
 				// 	fieldtype: "Section Break",
 				// },
-{
-	fieldtype: "HTML",
-	options: `
+				{
+					fieldtype: "HTML",
+					options: `
 		<div style="
 			background:#f0fdf4;
 			border:1px solid #bbf7d0;
@@ -709,8 +718,8 @@ frappe.pages['zatca-wizard'].on_page_load = function (wrapper) {
 			All checks must pass before moving to production CSID.
 		</div>
 	`
-}
-,
+				}
+				,
 				{
 					fieldname: "sub_heading",
 					fieldtype: "HTML",
@@ -776,29 +785,62 @@ frappe.pages['zatca-wizard'].on_page_load = function (wrapper) {
 												// Pass the corresponding button ID
 											},
 											callback: function (response) {
+												console.log("The response From Button-1: ", response);
 												if (response && response.message) {
-													const reportingStatus = response.message.reportingStatus;
-													const clearanceStatus = response.message.clearanceStatus;
+													const msg = response.message;
+													const reportingStatus = msg.reportingStatus;
+													const clearanceStatus = msg.clearanceStatus;
+													const warnings = msg.warnings || [];
 
-													// Check the checkbox if either status is "REPORTED" or " sCLEARED"
-													if (
+													// ✅ SUCCESS condition
+													const isSuccess =
 														reportingStatus === "REPORTED" ||
-														clearanceStatus === "CLEARED"
-													) {
-														current_dialog.set_value(
-															`${condition.fieldname}_checkbox`,
-															1
-														);
-													} else {
-														current_dialog.set_value(
-															`${condition.fieldname}_checkbox`,
-															0
-														);
+														clearanceStatus === "CLEARED";
+
+													// Checkbox handling (keep this)
+													current_dialog.set_value(
+														`${condition.fieldname}_checkbox`,
+														isSuccess ? 1 : 0
+													);
+
+													// 🌿 Show success message
+													if (isSuccess) {
+														// frappe.show_alert(
+														// 	{
+														// 		message: __("Invoice compliance check passed."),
+														// 		indicator: "green",
+														// 	},
+														// 	5 // seconds
+														// );
+														frappe.msgprint({
+															title: __("ZATCA Success"),
+															message: __(
+																`✅ Invoice successfully ${clearanceStatus === "CLEARED"
+																	? "CLEARED"
+																	: "REPORTED"
+																} to ZATCA.`
+															),
+															indicator: "green",
+														});
 													}
 
-													frappe.msgprint(
-														__(`${condition.label}: ${JSON.stringify(response.message, null, 4)}`)
-													);
+													// ⚠️ Show warnings ONLY if they exist
+													if (warnings.length) {
+														frappe.msgprint({
+															title: __("ZATCA Warnings"),
+															message: warnings.map(w => w.message).join("<br><br>"),
+															indicator: "orange",
+														});
+													}
+
+													// ❌ Safety fallback (should never happen)
+													if (!isSuccess && !warnings.length) {
+														frappe.msgprint({
+															title: __("ZATCA Status"),
+															message: __("No confirmation received from ZATCA."),
+															indicator: "blue",
+														});
+													}
 												} else {
 													frappe.msgprint(
 														__(`${condition.label}: No response or unknown error from the API.`)
@@ -825,9 +867,9 @@ frappe.pages['zatca-wizard'].on_page_load = function (wrapper) {
 			name: "final_csid_generation",
 			title: __("Final CSID Generation"),
 			fields: [
-{
-	fieldtype: "HTML",
-	options: `
+				{
+					fieldtype: "HTML",
+					options: `
 		<div style="
 			background:#eef2ff;
 			border:1px solid #c7d2fe;
@@ -841,8 +883,8 @@ frappe.pages['zatca-wizard'].on_page_load = function (wrapper) {
 			Once generated, invoices will be sent to ZATCA live.
 		</div>
 	`
-}
-,
+				}
+				,
 				{
 					fieldname: "final_csid",
 					label: __("Generate Final CSIDs"),

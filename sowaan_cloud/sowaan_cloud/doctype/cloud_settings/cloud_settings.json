@@ -1,0 +1,121 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-01-26 12:41:45.118414",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "admin_password",
+  "site_suffix",
+  "column_break_hjnj",
+  "sql_password",
+  "bench_path",
+  "cloudfare_section",
+  "cloudflare_api_secret",
+  "server_ip",
+  "column_break_lcuu",
+  "cloudflare_zone_domain",
+  "ssl_email",
+  "enable_ssl",
+  "enable_dns"
+ ],
+ "fields": [
+  {
+   "default": "Panasonic360!@#",
+   "fieldname": "sql_password",
+   "fieldtype": "Password",
+   "label": "SQL Password"
+  },
+  {
+   "fieldname": "admin_password",
+   "fieldtype": "Password",
+   "label": "Admin Password"
+  },
+  {
+   "default": "/home/dell/scloud-bench",
+   "fieldname": "bench_path",
+   "fieldtype": "Data",
+   "label": "Bench Path"
+  },
+  {
+   "fieldname": "column_break_hjnj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "cloudfare_section",
+   "fieldtype": "Section Break",
+   "label": "Cloudfare"
+  },
+  {
+   "fieldname": "cloudflare_api_secret",
+   "fieldtype": "Password",
+   "label": "Cloudflare API secret"
+  },
+  {
+   "fieldname": "column_break_lcuu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "a140c64f826ca4d30ca5b74dd0b8e1eb",
+   "fieldname": "cloudflare_zone_domain",
+   "fieldtype": "Password",
+   "label": "Cloudflare zone (domain)"
+  },
+  {
+   "description": "Your bench public IP",
+   "fieldname": "server_ip",
+   "fieldtype": "Data",
+   "label": "Server IP"
+  },
+  {
+   "fieldname": "ssl_email",
+   "fieldtype": "Data",
+   "label": "SSL Email"
+  },
+  {
+   "default": "1",
+   "fieldname": "enable_ssl",
+   "fieldtype": "Check",
+   "label": "Enable SSL"
+  },
+  {
+   "default": "1",
+   "fieldname": "enable_dns",
+   "fieldtype": "Check",
+   "label": "Enable DNS"
+  },
+  {
+   "default": "sowaanerp.com",
+   "fieldname": "site_suffix",
+   "fieldtype": "Select",
+   "label": "Site Suffix",
+   "options": "sowaanerp.com\nsowaan.com"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-01-26 14:05:30.869490",
+ "modified_by": "Administrator",
+ "module": "Sowaan Cloud",
+ "name": "Cloud Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

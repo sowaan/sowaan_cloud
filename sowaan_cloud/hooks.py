@@ -27,11 +27,11 @@ app_license = "mit"
 # include js, css files in header of desk.html
 # app_include_css = "/assets/sowaan_cloud/css/sowaan_cloud.css"
 # app_include_js = "/assets/sowaan_cloud/js/sowaan_cloud.js"
-app_include_js = [
-    "/assets/zatca/js/setup_wizard.js"
-]
+# app_include_js = [
+#     "/assets/zatca/js/setup_wizard.js"
+# ]
 
-setup_wizard_complete = "sowaan_cloud.utils.setup.setup_wizard_save_zatca_info"
+# setup_wizard_complete = "sowaan_cloud.utils.setup.setup_wizard_save_zatca_info"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/sowaan_cloud/css/sowaan_cloud.css"

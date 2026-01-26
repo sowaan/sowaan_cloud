@@ -1,0 +1,178 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:company_name",
+ "creation": "2026-01-19 12:24:51.864917",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_b4z8",
+  "company_name",
+  "vat_number",
+  "building_number",
+  "status",
+  "column_break_wcsh",
+  "abbr",
+  "cr_number",
+  "zip_code",
+  "site_name",
+  "column_break_busb",
+  "instance_name",
+  "business_category",
+  "city",
+  "provisioned",
+  "section_break_lrkb",
+  "selected_package",
+  "package_details",
+  "section_break_odye",
+  "amended_from",
+  "provisioning_logs"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_b4z8",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Cloud Subscription",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "company_name",
+   "fieldtype": "Data",
+   "label": "Company Name",
+   "unique": 1
+  },
+  {
+   "fieldname": "vat_number",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "VAT Number"
+  },
+  {
+   "fieldname": "building_number",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Building Number"
+  },
+  {
+   "fieldname": "zip_code",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Zip Code"
+  },
+  {
+   "fieldname": "column_break_wcsh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "abbr",
+   "fieldtype": "Data",
+   "label": "Abbr"
+  },
+  {
+   "description": ".sowaanerp.com",
+   "fieldname": "instance_name",
+   "fieldtype": "Data",
+   "label": "Instance Name",
+   "unique": 1
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "City"
+  },
+  {
+   "fieldname": "business_category",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Business Category"
+  },
+  {
+   "fieldname": "section_break_odye",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "cr_number",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "CR Number"
+  },
+  {
+   "fieldname": "column_break_busb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_lrkb",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "package_details",
+   "fieldtype": "HTML"
+  },
+  {
+   "fieldname": "selected_package",
+   "fieldtype": "Select",
+   "label": "Package",
+   "options": "\nZATCA_STARTER\nZATCA_RETAIL_POS\nZATCA_COMPLETE_SME"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nProvisioning\nActive\nFailed"
+  },
+  {
+   "default": "0",
+   "fieldname": "provisioned",
+   "fieldtype": "Check",
+   "label": "Provisioned"
+  },
+  {
+   "fieldname": "provisioning_logs",
+   "fieldtype": "Long Text",
+   "label": "Provisioning Logs"
+  },
+  {
+   "fieldname": "site_name",
+   "fieldtype": "Read Only",
+   "label": "Site Name"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-01-22 13:37:30.467222",
+ "modified_by": "Administrator",
+ "module": "Sowaan Cloud",
+ "name": "Cloud Subscription",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

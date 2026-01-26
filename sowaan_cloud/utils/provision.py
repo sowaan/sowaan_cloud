@@ -27,19 +27,6 @@ def create_instance(docname):
     site_name = f"{doc.instance_name}.{SITE_SUFFIX}"
     site_path = os.path.join(BENCH_PATH, "sites", site_name)
 
-    # 3️⃣ Safety check: site already exists on disk
-    if os.path.exists(site_path):
-        doc.site_name = site_name
-        doc.provisioned = 1
-        doc.status = "Active"
-        doc.save(ignore_permissions=True)
-
-        frappe.msgprint(
-            "Site already exists. Linked existing instance.",
-            indicator="green",
-        )
-        return
-
     doc.provisioning_logs = ""
     # 4️⃣ Mark provisioning & enqueue
     doc.status = "Provisioning"
@@ -223,13 +210,13 @@ def cloudflare_dns_exists(site_name):
     settings = get_cloud_settings()
 
     headers = {
-        "Authorization": f"Bearer {settings.get_password('cloudflare_api_token')}",
+        "Authorization": f"Bearer {settings.get_password('cloudflare_api_secret')}",
         "Content-Type": "application/json",
     }
 
     url = (
         f"https://api.cloudflare.com/client/v4/zones/"
-        f"{settings.cloudflare_zone_id}/dns_records"
+        f"{settings.get_password('cloudflare_zone_domain')}/dns_records"
         f"?type=A&name={site_name}"
     )
 
@@ -248,7 +235,7 @@ def create_cloudflare_dns(site_name):
         return  # ✅ Safe retry
 
     headers = {
-        "Authorization": f"Bearer {settings.get_password('cloudflare_api_token')}",
+        "Authorization": f"Bearer {settings.get_password('cloudflare_api_secret')}",
         "Content-Type": "application/json",
     }
 
@@ -260,7 +247,7 @@ def create_cloudflare_dns(site_name):
         "proxied": False,
     }
 
-    url = f"https://api.cloudflare.com/client/v4/zones/{settings.cloudflare_zone_id}/dns_records"
+    url = f"https://api.cloudflare.com/client/v4/zones/{settings.get_password('cloudflare_zone_domain')}/dns_records"
 
     r = requests.post(url, json=payload, headers=headers, timeout=10)
     data = r.json()

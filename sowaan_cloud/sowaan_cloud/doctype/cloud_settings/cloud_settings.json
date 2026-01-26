@@ -24,7 +24,9 @@
    "default": "Panasonic360!@#",
    "fieldname": "sql_password",
    "fieldtype": "Password",
-   "label": "SQL Password"
+   "in_list_view": 1,
+   "label": "SQL Password",
+   "reqd": 1
   },
   {
    "fieldname": "admin_password",
@@ -35,7 +37,9 @@
    "default": "/home/dell/scloud-bench",
    "fieldname": "bench_path",
    "fieldtype": "Data",
-   "label": "Bench Path"
+   "in_list_view": 1,
+   "label": "Bench Path",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_hjnj",
@@ -49,7 +53,9 @@
   {
    "fieldname": "cloudflare_api_secret",
    "fieldtype": "Password",
-   "label": "Cloudflare API secret"
+   "in_list_view": 1,
+   "label": "Cloudflare API secret",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_lcuu",
@@ -59,18 +65,21 @@
    "default": "a140c64f826ca4d30ca5b74dd0b8e1eb",
    "fieldname": "cloudflare_zone_domain",
    "fieldtype": "Password",
-   "label": "Cloudflare zone (domain)"
+   "label": "Cloudflare zone (domain)",
+   "reqd": 1
   },
   {
    "description": "Your bench public IP",
    "fieldname": "server_ip",
    "fieldtype": "Data",
-   "label": "Server IP"
+   "label": "Server IP",
+   "reqd": 1
   },
   {
    "fieldname": "ssl_email",
    "fieldtype": "Data",
-   "label": "SSL Email"
+   "label": "SSL Email",
+   "reqd": 1
   },
   {
    "default": "1",
@@ -88,15 +97,17 @@
    "default": "sowaanerp.com",
    "fieldname": "site_suffix",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Site Suffix",
-   "options": "sowaanerp.com\nsowaan.com"
+   "options": "sowaanerp.com\nsowaan.com",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-01-26 14:05:30.869490",
+ "modified": "2026-01-26 14:18:18.448366",
  "modified_by": "Administrator",
  "module": "Sowaan Cloud",
  "name": "Cloud Settings",

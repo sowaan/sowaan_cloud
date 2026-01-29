@@ -5,6 +5,7 @@ import os
 import requests
 import re
 from sowaan_cloud.utils.cloud_settings import get_cloud_settings
+import json
 
 
 @frappe.whitelist()
@@ -70,6 +71,8 @@ def run_bench_provisioning(docname):
                 text=True,
             )
 
+        enforce_site_config(site_path)
+
         # 2️⃣ Install apps (safe to re-run)
         for app in ("erpnext", "zatca", "sowaan_cloud"):
             subprocess.run(
@@ -80,7 +83,18 @@ def run_bench_provisioning(docname):
                 text=True,
             )
 
+        
+        
         # 3️⃣ Bootstrap (safe if idempotent)
+        
+        kwargs = {
+            "company_name": doc.company_name,
+            "abbr": doc.abbr,
+            "user_email": doc.user_email,
+            "country": doc.country,
+            "currency": doc.currency,
+        }
+
         subprocess.run(
             [
                 "bench",
@@ -88,7 +102,7 @@ def run_bench_provisioning(docname):
                 "execute",
                 "sowaan_cloud.utils.bootstrap.bootstrap_site",
                 "--kwargs",
-                f'{{"company_name": "{doc.company_name}", "abbr": "{doc.abbr}"}}'
+                json.dumps(kwargs),
             ],
             cwd=BENCH_PATH,
             check=True,
@@ -104,12 +118,18 @@ def run_bench_provisioning(docname):
         doc.provisioned = 1
         doc.save(ignore_permissions=True)
 
+        run_migrate(site_name, bench_path=BENCH_PATH)
+
 
     except Exception as e:
         raw_error = str(e)
         sanitized_error = sanitize_raw_error(raw_error)
         analyzed = analyze_provisioning_error(raw_error)
 
+        frappe.log_error(
+                    frappe.get_traceback(),
+                    "BOOTSTRAP SITE FAILED"
+                )
         # Save ONLY sanitized / friendly info
         doc.status = "Failed"
         doc.provisioning_logs = analyzed["message"]
@@ -132,6 +152,46 @@ def run_bench_provisioning(docname):
         #     analyzed["message"],
         #     title=analyzed["title"],
         # )
+
+def enforce_site_config(site_path):
+    path = os.path.join(site_path, "site_config.json")
+
+    with open(path) as f:
+        config = json.load(f)
+
+    config["skip_setup_wizard"] = 1
+
+    with open(path, "w") as f:
+        json.dump(config, f, indent=2)
+
+# def run_migrate(site_name, bench_path=None):
+#     subprocess.run(
+#         ["bench", "--site", site_name, "migrate"],
+#         cwd=bench_path,
+#         check=True,
+#     )
+
+#     # 🔥 CRITICAL: reload framework state
+#     subprocess.run(
+#         ["bench", "restart"],
+#         cwd=bench_path,
+#         check=True,
+#     )
+def run_migrate(site_name, bench_path):
+    """
+    Run migrate in a login shell so environment matches manual execution.
+    """
+
+    cmd = (
+        f"cd {bench_path} && "
+        f"bench --site {site_name} migrate && "
+        f"bench restart"
+    )
+
+    subprocess.run(
+        ["bash", "-lc", cmd],
+        check=True,
+    )
 
 
 def analyze_provisioning_error(raw_error: str) -> dict:

@@ -94,12 +94,12 @@
    "label": "Enable DNS"
   },
   {
-   "default": "sowaanerp.com",
+   "default": "sowaan.cloud",
    "fieldname": "site_suffix",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Site Suffix",
-   "options": "sowaanerp.com\nsowaan.com",
+   "options": "sowaanerp.com\nsowaan.com\nsowaan.cloud",
    "reqd": 1
   }
  ],
@@ -107,7 +107,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-01-26 14:18:18.448366",
+ "modified": "2026-01-28 13:31:28.829564",
  "modified_by": "Administrator",
  "module": "Sowaan Cloud",
  "name": "Cloud Settings",

@@ -8,19 +8,24 @@
  "field_order": [
   "section_break_b4z8",
   "company_name",
-  "vat_number",
-  "building_number",
-  "status",
+  "user_email",
   "column_break_wcsh",
   "abbr",
-  "cr_number",
-  "zip_code",
+  "country",
+  "currency",
   "site_name",
   "column_break_busb",
   "instance_name",
-  "business_category",
-  "city",
+  "status",
   "provisioned",
+  "section_break_pzer",
+  "vat_number",
+  "building_number",
+  "zip_code",
+  "column_break_edza",
+  "cr_number",
+  "city",
+  "business_category",
   "section_break_lrkb",
   "selected_package",
   "package_details",
@@ -46,7 +51,9 @@
   {
    "fieldname": "company_name",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Company Name",
+   "reqd": 1,
    "unique": 1
   },
   {
@@ -74,13 +81,17 @@
   {
    "fieldname": "abbr",
    "fieldtype": "Data",
-   "label": "Abbr"
+   "in_list_view": 1,
+   "label": "Abbr",
+   "reqd": 1
   },
   {
    "description": ".sowaanerp.com",
    "fieldname": "instance_name",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Instance Name",
+   "reqd": 1,
    "unique": 1
   },
   {
@@ -128,13 +139,15 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Draft\nProvisioning\nActive\nFailed"
+   "options": "Draft\nProvisioning\nActive\nFailed",
+   "read_only": 1
   },
   {
    "default": "0",
    "fieldname": "provisioned",
    "fieldtype": "Check",
-   "label": "Provisioned"
+   "label": "Provisioned",
+   "read_only": 1
   },
   {
    "fieldname": "provisioning_logs",
@@ -145,12 +158,45 @@
    "fieldname": "site_name",
    "fieldtype": "Read Only",
    "label": "Site Name"
+  },
+  {
+   "description": "Provide an email address to create default user",
+   "fieldname": "user_email",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "User Email",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_pzer",
+   "fieldtype": "Section Break",
+   "hidden": 1
+  },
+  {
+   "fieldname": "column_break_edza",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Saudi Arabia",
+   "fieldname": "country",
+   "fieldtype": "Link",
+   "label": "Country",
+   "options": "Country",
+   "reqd": 1
+  },
+  {
+   "default": "SAR",
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-22 13:37:30.467222",
+ "modified": "2026-01-27 18:56:50.853353",
  "modified_by": "Administrator",
  "module": "Sowaan Cloud",
  "name": "Cloud Subscription",

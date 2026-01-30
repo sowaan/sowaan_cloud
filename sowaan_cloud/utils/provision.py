@@ -317,19 +317,30 @@ def sanitize_raw_error(text: str) -> str:
 
     return text
 
-def cloudflare_dns_exists(site_name):
-    settings = get_cloud_settings()
+def cloudflare_headers(settings):
+    token = settings.get_password("cloudflare_api_secret")
 
-    headers = {
-        "Authorization": f"Bearer {settings.get_password('cloudflare_api_secret')}",
+    if not token:
+        frappe.throw("Cloudflare API token is missing")
+
+    return {
+        "Authorization": f"Bearer {token.strip()}",
         "Content-Type": "application/json",
     }
 
+def cloudflare_dns_exists(site_name):
+    settings = get_cloud_settings()
+
+    headers = cloudflare_headers(settings)
+
+
+    zone_id = settings.get_password("cloudflare_zone_domain")
+
     url = (
         f"https://api.cloudflare.com/client/v4/zones/"
-        f"{settings.get_password('cloudflare_zone_domain')}/dns_records"
-        f"?type=A&name={site_name}"
+        f"{zone_id}/dns_records"
     )
+
 
     r = requests.get(url, headers=headers, timeout=10)
     data = r.json()
@@ -342,13 +353,9 @@ def create_cloudflare_dns(site_name):
     if not settings.enable_dns:
         return
 
-    if cloudflare_dns_exists(site_name):
-        return  # ✅ Safe retry
+    zone_id = settings.get_password("cloudflare_zone_domain")
 
-    headers = {
-        "Authorization": f"Bearer {settings.get_password('cloudflare_api_secret')}",
-        "Content-Type": "application/json",
-    }
+    headers = cloudflare_headers(settings)
 
     payload = {
         "type": "A",
@@ -358,11 +365,10 @@ def create_cloudflare_dns(site_name):
         "proxied": False,
     }
 
-    url = f"https://api.cloudflare.com/client/v4/zones/{settings.get_password('cloudflare_zone_domain')}/dns_records"
+    url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records"
 
     r = requests.post(url, json=payload, headers=headers, timeout=10)
     data = r.json()
 
     if not data.get("success"):
         raise Exception(data)
-

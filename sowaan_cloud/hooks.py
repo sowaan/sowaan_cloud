@@ -152,7 +152,14 @@ app_license = "mit"
 
 # Scheduled Tasks
 # ---------------
-
+scheduler_events = {
+    # "daily": [
+    #     "sowaan_cloud.utils.ssl.retry_failed_ssl"
+    # ],
+    "hourly": [
+        "sowaan_cloud.utils.ssl.retry_failed_ssl"
+    ]    
+}
 # scheduler_events = {
 # 	"all": [
 # 		"sowaan_cloud.tasks.all"

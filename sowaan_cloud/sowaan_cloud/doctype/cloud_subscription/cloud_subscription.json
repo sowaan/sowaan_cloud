@@ -17,6 +17,7 @@
   "column_break_busb",
   "instance_name",
   "status",
+  "ssl_status",
   "provisioned",
   "section_break_pzer",
   "vat_number",
@@ -190,12 +191,19 @@
    "label": "Currency",
    "options": "Currency",
    "reqd": 1
+  },
+  {
+   "fieldname": "ssl_status",
+   "fieldtype": "Select",
+   "label": "SSL Status",
+   "options": "Issued\nFailed",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-29 09:38:14.958430",
+ "modified": "2026-01-30 17:32:37.256083",
  "modified_by": "Administrator",
  "module": "Sowaan Cloud",
  "name": "Cloud Subscription",

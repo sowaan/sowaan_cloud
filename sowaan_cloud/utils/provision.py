@@ -1,11 +1,20 @@
-import frappe
+import frappe # type: ignore
 import subprocess
-import shlex
 import os
 import requests
 import re
 from sowaan_cloud.utils.cloud_settings import get_cloud_settings
 import json
+import subprocess
+import pwd
+
+
+def os_user_exists(username: str) -> bool:
+    try:
+        pwd.getpwnam(username)
+        return True
+    except KeyError:
+        return False
 
 
 @frappe.whitelist()
@@ -41,6 +50,27 @@ def create_instance(docname):
         is_async=True,
     )
 
+def run_as_frappe(cmd: str, bench_path: str):
+    """
+    Run a bench command:
+    - As frappe user if present
+    - Otherwise as current user
+    Always via login shell to load env
+    """
+
+    full_cmd = f"cd {bench_path} && {cmd}"
+
+    if os_user_exists("frappe"):
+        subprocess.run(
+            ["sudo", "-u", "frappe", "bash", "-lc", full_cmd],
+            check=True,
+        )
+    else:
+        # Dev / CI fallback
+        subprocess.run(
+            ["bash", "-lc", full_cmd],
+            check=True,
+        )
 
 def run_bench_provisioning(docname):
     settings = get_cloud_settings()
@@ -55,32 +85,34 @@ def run_bench_provisioning(docname):
 
     try:
         # 1️⃣ Create site if missing
-        if not os.path.isdir(site_path):
-            subprocess.run(
-                [
-                    "bench",
-                    "new-site",
-                    site_name,
-                    "--admin-password", "admin",
-                    "--db-root-password", SQL_PASSWORD,
-                ],
-                cwd=BENCH_PATH,
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
-
+        # if not os.path.isdir(site_path):
+        #     subprocess.run(
+        #         [
+        #             "bench",
+        #             "new-site",
+        #             site_name,
+        #             "--admin-password", "admin",
+        #             "--db-root-password", SQL_PASSWORD,
+        #         ],
+        #         cwd=BENCH_PATH,
+        #         check=True,
+        #         stdout=subprocess.PIPE,
+        #         stderr=subprocess.PIPE,
+        #         text=True,
+        #     )
+        run_as_frappe(
+            f"bench new-site {site_name} "
+            f"--admin-password admin "
+            f"--db-root-password {SQL_PASSWORD}",
+            BENCH_PATH,
+        )
         enforce_site_config(site_path)
 
         # 2️⃣ Install apps (safe to re-run)
-        for app in ("erpnext", "zatca", "sowaan_cloud"):
-            subprocess.run(
-                ["bench", "--site", site_name, "install-app", app],
-                cwd=BENCH_PATH,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
+        for app in ("erpnext", "zatca", "sowaan_cloud", "sowaanerp_subscription"):
+            run_as_frappe(
+                f"bench --site {site_name} install-app {app}",
+                BENCH_PATH,
             )
 
         
@@ -95,34 +127,28 @@ def run_bench_provisioning(docname):
             "currency": doc.currency,
         }
 
-        result = subprocess.run(
-            [
-                "bench",
-                "--site", site_name,
-                "execute",
-                "sowaan_cloud.utils.bootstrap.bootstrap_site",
-                "--kwargs",
-                json.dumps(kwargs),
-            ],
-            cwd=BENCH_PATH,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
+        kwargs_json = json.dumps(kwargs).replace('"', '\\"')
+
+        run_as_frappe(
+            f'bench --site {site_name} execute '
+            f'sowaan_cloud.utils.bootstrap.bootstrap_site '
+            f'--kwargs "{kwargs_json}"',
+            BENCH_PATH,
         )
 
-        if result.returncode != 0:
-            frappe.log_error(
-                title="Bootstrap Failed",
-                message=(
-                    f"STDOUT:\n{result.stdout}\n\n"
-                    f"STDERR:\n{result.stderr}"
-                ),
-            )
-            raise Exception("bootstrap_site failed")
+        # if result.returncode != 0:
+        #     frappe.log_error(
+        #         title="Bootstrap Failed",
+        #         message=(
+        #             f"STDOUT:\n{result.stdout}\n\n"
+        #             f"STDERR:\n{result.stderr}"
+        #         ),
+        #     )
+        #     raise Exception("bootstrap_site failed")
 
         # 4️⃣ DNS + SSL (idempotent)
         create_cloudflare_dns(site_name)
-        issue_ssl(site_name)
+        # issue_ssl_with_wait(site_name)
 
         # 5️⃣ NOW mark active (only here)
         doc.site_name = site_name
@@ -130,6 +156,13 @@ def run_bench_provisioning(docname):
         doc.provisioned = 1
         doc.save(ignore_permissions=True)
 
+        frappe.enqueue(
+            "sowaan_cloud.utils.ssl.issue_ssl_async",
+            queue="long",
+            site_name=site_name,
+            docname=doc.name,
+            timeout=900,
+        )
         run_migrate(site_name, bench_path=BENCH_PATH)
 
 
@@ -327,30 +360,3 @@ def create_cloudflare_dns(site_name):
     if not data.get("success"):
         raise Exception(data)
 
-def ssl_exists(site_name):
-    return os.path.exists(f"/etc/letsencrypt/live/{site_name}/fullchain.pem")
-
-def issue_ssl(site_name):
-    settings = get_cloud_settings()
-
-    if not settings.enable_ssl:
-        return
-
-    if ssl_exists(site_name):
-        return  # ✅ Already secured
-
-    subprocess.run(
-        [
-            "certbot",
-            "--nginx",
-            "-d", site_name,
-            "--non-interactive",
-            "--agree-tos",
-            "-m", f"admin@{settings.site_suffix}",
-            "--redirect",
-        ],
-        check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )

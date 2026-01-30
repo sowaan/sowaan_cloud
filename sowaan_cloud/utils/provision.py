@@ -16,7 +16,13 @@ def os_user_exists(username: str) -> bool:
     except KeyError:
         return False
 
-
+def frappe_user_exists():
+    try:
+        pwd.getpwnam("frappe")
+        return True
+    except KeyError:
+        return False
+    
 @frappe.whitelist()
 def create_instance(docname):
     settings = get_cloud_settings()
@@ -50,28 +56,28 @@ def create_instance(docname):
         is_async=True,
     )
 
-def run_as_frappe(cmd: str, bench_path: str):
+
+def run_as_frappe(cmd, bench_path):
     """
-    Run a bench command:
-    - As frappe user if present
-    - Otherwise as current user
-    Always via login shell to load env
+    Run bench command as frappe user if available,
+    otherwise run as current user.
     """
+
+    bench_path = os.path.abspath(bench_path)
 
     full_cmd = f"cd {bench_path} && {cmd}"
 
-    if os_user_exists("frappe"):
+    if frappe_user_exists():
         subprocess.run(
             ["sudo", "-u", "frappe", "bash", "-lc", full_cmd],
             check=True,
         )
     else:
-        # Dev / CI fallback
+        # fallback: current user
         subprocess.run(
             ["bash", "-lc", full_cmd],
             check=True,
         )
-
 def run_bench_provisioning(docname):
     settings = get_cloud_settings()
     BENCH_PATH = settings.bench_path
@@ -233,9 +239,9 @@ def run_migrate(site_name, bench_path):
         f"bench restart"
     )
 
-    subprocess.run(
-        ["bash", "-lc", cmd],
-        check=True,
+    run_as_frappe(
+        f"bench --site {site_name} migrate",
+        bench_path,
     )
 
 

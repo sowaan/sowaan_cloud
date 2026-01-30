@@ -146,8 +146,7 @@
    "default": "0",
    "fieldname": "provisioned",
    "fieldtype": "Check",
-   "label": "Provisioned",
-   "read_only": 1
+   "label": "Provisioned"
   },
   {
    "fieldname": "provisioning_logs",
@@ -196,7 +195,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-27 18:56:50.853353",
+ "modified": "2026-01-29 09:38:14.958430",
  "modified_by": "Administrator",
  "module": "Sowaan Cloud",
  "name": "Cloud Subscription",

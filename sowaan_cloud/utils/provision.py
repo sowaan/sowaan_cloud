@@ -95,7 +95,7 @@ def run_bench_provisioning(docname):
             "currency": doc.currency,
         }
 
-        subprocess.run(
+        result = subprocess.run(
             [
                 "bench",
                 "--site", site_name,
@@ -105,8 +105,20 @@ def run_bench_provisioning(docname):
                 json.dumps(kwargs),
             ],
             cwd=BENCH_PATH,
-            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
         )
+
+        if result.returncode != 0:
+            frappe.log_error(
+                title="Bootstrap Failed",
+                message=(
+                    f"STDOUT:\n{result.stdout}\n\n"
+                    f"STDERR:\n{result.stderr}"
+                ),
+            )
+            raise Exception("bootstrap_site failed")
 
         # 4️⃣ DNS + SSL (idempotent)
         create_cloudflare_dns(site_name)

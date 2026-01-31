@@ -8,6 +8,9 @@ import json
 import subprocess
 import pwd
 
+from frappe.utils.data import add_days, today # type: ignore
+
+from sowaan_cloud.constants.packages import PACKAGE_APPS
 
 def os_user_exists(username: str) -> bool:
     try:
@@ -112,17 +115,27 @@ def run_bench_provisioning(docname):
             f"--db-root-password {SQL_PASSWORD}",
             BENCH_PATH,
         )
-        enforce_site_config(site_path)
+        
 
-        # 2️⃣ Install apps (safe to re-run)
-        for app in ("erpnext", "zatca", "sowaan_cloud", "sowaanerp_subscription"):
+        package = doc.selected_package
+
+        apps_to_install = PACKAGE_APPS.get(package)
+
+        if not apps_to_install:
+            frappe.throw(f"Unknown package: {package}")
+
+        for app in apps_to_install:
             run_as_frappe(
                 f"bench --site {site_name} install-app {app}",
                 BENCH_PATH,
             )
 
-        
-        
+        # 2️⃣ Enforce site config
+        trial_days = settings.trial_days or 15
+
+        enforce_site_config(site_path) 
+        enforce_trial_validity(site_path, days=trial_days)
+
         # 3️⃣ Bootstrap (safe if idempotent)
         
         kwargs = {
@@ -131,6 +144,7 @@ def run_bench_provisioning(docname):
             "user_email": doc.user_email,
             "country": doc.country,
             "currency": doc.currency,
+            "package": package,
         }
 
         kwargs_json = json.dumps(kwargs).replace('"', '\\"')
@@ -211,6 +225,21 @@ def enforce_site_config(site_path):
         config = json.load(f)
 
     config["skip_setup_wizard"] = 1
+
+    with open(path, "w") as f:
+        json.dump(config, f, indent=2)
+
+def enforce_trial_validity(site_path, days=15):
+    path = os.path.join(site_path, "site_config.json")
+
+    with open(path) as f:
+        config = json.load(f)
+
+    quota = config.get("quota", {})
+    quota["valid_till"] = add_days(today(), days)
+    quota["trial_source"] = "provisioning"
+
+    config["quota"] = quota
 
     with open(path, "w") as f:
         json.dump(config, f, indent=2)

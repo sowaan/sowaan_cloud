@@ -16,7 +16,7 @@ DEFAULT_PASSWORD = "Abc@12345"
 # Entry point
 # ------------------------------------------------------------
 
-def bootstrap_site(company_name, abbr, country, currency, user_email=None):
+def bootstrap_site(company_name, abbr, country, currency, user_email=None, package="ZATCA_STARTER"):
     """
     Full headless bootstrap for a new ERPNext site.
     """
@@ -32,7 +32,8 @@ def bootstrap_site(company_name, abbr, country, currency, user_email=None):
     )
 
     # Post-setup customization only
-    ensure_default_business_user(company, user_email)
+    enable_modules_for_company(company, package)
+    ensure_default_business_user(company, package, user_email)
     ensure_warehouse_types()
     setup_taxes_and_charges(company_name, country)
 
@@ -125,7 +126,7 @@ def pick_country_coa(country):
 # Users
 # ------------------------------------------------------------
 
-def ensure_default_business_user(company, email=None):
+def ensure_default_business_user(company, package, email=None):
     user_email = get_user_email(company, email)
 
     if frappe.db.exists("User", user_email):
@@ -141,12 +142,13 @@ def ensure_default_business_user(company, email=None):
             "new_password": DEFAULT_PASSWORD,
         }).insert(ignore_permissions=True)
 
-    assign_roles(user)
+    assign_roles(user, package)
     set_user_defaults(user, company)
     restrict_user_to_company(user, company)
 
     user.save(ignore_permissions=True)
     return user
+
 
 
 def get_user_email(company, provided_email=None):
@@ -160,14 +162,14 @@ def get_user_email(company, provided_email=None):
     return f"ops@{company.abbr.lower()}.local"
 
 
-def assign_roles(user):
-    roles = [
-        "Sales User",
-        "Purchase User",
-        "Accounts User",
-        "Stock User",
-        "Manufacturing User",
-    ]
+def assign_roles(user, package):
+    from sowaan_cloud.constants.packages import PACKAGE_FEATURES
+
+    config = PACKAGE_FEATURES.get(package)
+    if not config:
+        frappe.throw(f"Invalid package: {package}")
+
+    roles = config.get("roles", [])
 
     existing = {r.role for r in user.roles}
     for role in roles:
@@ -194,6 +196,24 @@ def restrict_user_to_company(user, company):
         "apply_to_all_doctypes": 1,
     }).insert(ignore_permissions=True)
 
+def enable_modules_for_company(company, package):
+    from sowaan_cloud.constants.packages import PACKAGE_FEATURES
+
+    config = PACKAGE_FEATURES.get(package)
+    if not config:
+        frappe.throw(f"Invalid package: {package}")
+
+    modules = config.get("modules", [])
+
+    company.reload()
+
+    company.enabled_modules = []  # reset
+    for module in modules:
+        company.append("enabled_modules", {
+            "module": module
+        })
+
+    company.save(ignore_permissions=True)
 
 # ------------------------------------------------------------
 # Warehouses

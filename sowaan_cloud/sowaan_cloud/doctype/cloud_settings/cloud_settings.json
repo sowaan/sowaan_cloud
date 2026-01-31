@@ -7,6 +7,7 @@
  "field_order": [
   "admin_password",
   "site_suffix",
+  "trial_days",
   "column_break_hjnj",
   "sql_password",
   "bench_path",
@@ -101,13 +102,19 @@
    "label": "Site Suffix",
    "options": "sowaanerp.com\nsowaan.com\nsowaan.cloud",
    "reqd": 1
+  },
+  {
+   "default": "15",
+   "fieldname": "trial_days",
+   "fieldtype": "Int",
+   "label": "Trial Days"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-01-28 13:31:28.829564",
+ "modified": "2026-01-31 17:09:47.691759",
  "modified_by": "Administrator",
  "module": "Sowaan Cloud",
  "name": "Cloud Settings",

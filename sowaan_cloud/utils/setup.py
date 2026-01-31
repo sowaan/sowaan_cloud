@@ -1,4 +1,4 @@
-import frappe
+import frappe # type: ignore
 
 def setup_wizard_save_zatca_info(args):
     company_name = args.get("company")

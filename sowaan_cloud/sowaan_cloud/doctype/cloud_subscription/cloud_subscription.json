@@ -8,31 +8,36 @@
  "field_order": [
   "section_break_b4z8",
   "company_name",
+  "abbr",
   "user_email",
   "column_break_wcsh",
-  "abbr",
+  "instance_name",
+  "your_site_name_suffix",
+  "site_name",
+  "site_link",
+  "column_break_busb",
   "country",
   "currency",
-  "site_name",
-  "column_break_busb",
-  "instance_name",
   "status",
-  "ssl_status",
   "provisioned",
+  "section_break_lrkb",
+  "selected_package",
+  "package_details",
+  "section_break_odye",
+  "provisioning_logs",
+  "section_break_yufg",
+  "ssl_status",
+  "ssl_attempts",
+  "ssl_last_error",
   "section_break_pzer",
+  "amended_from",
   "vat_number",
   "building_number",
   "zip_code",
   "column_break_edza",
   "cr_number",
   "city",
-  "business_category",
-  "section_break_lrkb",
-  "selected_package",
-  "package_details",
-  "section_break_odye",
-  "amended_from",
-  "provisioning_logs"
+  "business_category"
  ],
  "fields": [
   {
@@ -87,11 +92,10 @@
    "reqd": 1
   },
   {
-   "description": ".sowaanerp.com",
    "fieldname": "instance_name",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Instance Name",
+   "label": "Your Site Name (Prefix)",
    "reqd": 1,
    "unique": 1
   },
@@ -109,7 +113,8 @@
   },
   {
    "fieldname": "section_break_odye",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "hidden": 1
   },
   {
    "fieldname": "cr_number",
@@ -157,7 +162,7 @@
   {
    "fieldname": "site_name",
    "fieldtype": "Read Only",
-   "label": "Site Name"
+   "label": "Site Full Name"
   },
   {
    "description": "Provide an email address to create default user",
@@ -196,14 +201,41 @@
    "fieldname": "ssl_status",
    "fieldtype": "Select",
    "label": "SSL Status",
-   "options": "Issued\nFailed",
+   "options": "\nIssued\nFailed",
    "read_only": 1
+  },
+  {
+   "fieldname": "ssl_attempts",
+   "fieldtype": "Int",
+   "label": "SSL Attempts",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_yufg",
+   "fieldtype": "Section Break",
+   "label": "SSL Details"
+  },
+  {
+   "fieldname": "ssl_last_error",
+   "fieldtype": "Small Text",
+   "label": "SSL Last Error",
+   "read_only": 1
+  },
+  {
+   "fieldname": "your_site_name_suffix",
+   "fieldtype": "Read Only",
+   "label": "Your Site Name (Suffix)"
+  },
+  {
+   "fieldname": "site_link",
+   "fieldtype": "HTML",
+   "label": "Site Link"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-30 17:32:37.256083",
+ "modified": "2026-01-31 12:28:46.180709",
  "modified_by": "Administrator",
  "module": "Sowaan Cloud",
  "name": "Cloud Subscription",

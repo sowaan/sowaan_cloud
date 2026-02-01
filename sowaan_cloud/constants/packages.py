@@ -2,7 +2,7 @@ PACKAGE_APPS = {
     "ZATCA_STARTER": [
         "erpnext",
         "zatca",
-        "sowaan_cloud",
+        "sowaan_client",
         "sowaanerp_subscription",
         "ksa_print_formats",
     ],
@@ -10,7 +10,7 @@ PACKAGE_APPS = {
     "ZATCA_RETAIL_POS": [
         "erpnext",
         "zatca",
-        "sowaan_cloud",
+        "sowaan_client",
         "sowaanerp_subscription",
         "ksa_print_formats",
         "posawesome",
@@ -19,7 +19,7 @@ PACKAGE_APPS = {
     "ZATCA_COMPLETE_SME": [
         "erpnext",
         "zatca",
-        "sowaan_cloud",
+        "sowaan_client",
         "sowaanerp_subscription",
         "ksa_print_formats",
         "posawesome",

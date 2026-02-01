@@ -10,6 +10,7 @@
   "company_name",
   "abbr",
   "user_email",
+  "user_password",
   "column_break_wcsh",
   "instance_name",
   "your_site_name_suffix",
@@ -19,6 +20,7 @@
   "country",
   "currency",
   "status",
+  "provisioning_step",
   "provisioned",
   "section_break_lrkb",
   "selected_package",
@@ -146,14 +148,15 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Draft\nProvisioning\nActive\nFailed",
+   "options": "Draft\nProvisioning\nActive\nFailed\nSuspended",
    "read_only": 1
   },
   {
    "default": "0",
    "fieldname": "provisioned",
    "fieldtype": "Check",
-   "label": "Provisioned"
+   "label": "Provisioned",
+   "read_only": 1
   },
   {
    "fieldname": "provisioning_logs",
@@ -231,12 +234,27 @@
    "fieldname": "site_link",
    "fieldtype": "HTML",
    "label": "Site Link"
+  },
+  {
+   "fieldname": "user_password",
+   "fieldtype": "Password",
+   "label": "User Password",
+   "reqd": 1
+  },
+  {
+   "default": "INIT",
+   "fieldname": "provisioning_step",
+   "fieldtype": "Select",
+   "label": "Provisioning Step",
+   "options": "INIT\nSITE_CREATED\nAPPS_INSTALLED\nBOOTSTRAPPED\nCOMPLETED\nFAILED",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
+ "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-31 18:41:01.955119",
+ "modified": "2026-02-01 11:02:26.023063",
  "modified_by": "Administrator",
  "module": "Sowaan Cloud",
  "name": "Cloud Subscription",

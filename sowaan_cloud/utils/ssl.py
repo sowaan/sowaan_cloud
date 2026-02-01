@@ -15,37 +15,14 @@ def wait_for_dns(site_name, expected_ip, timeout=120, interval=5):
         try:
             resolved_ip = socket.gethostbyname(site_name)
             if resolved_ip == expected_ip:
-                return
+                return True
         except socket.gaierror:
             pass
 
         time.sleep(interval)
 
-    raise Exception("DNS not propagated")
-
-
-def issue_ssl_with_wait(site_name):
-    settings = get_cloud_settings()
-
-    if not settings.enable_ssl:
-        return
-
-    if ssl_exists(site_name):
-        return
-
-    # 1️⃣ Wait for DNS propagation
-    if not wait_for_dns(site_name, settings.server_ip):
-        raise Exception("DNS did not propagate in time")
-
-    # 2️⃣ Try certbot (retry once)
-    for attempt in (1, 2):
-        try:
-            issue_ssl(site_name)
-            return
-        except subprocess.CalledProcessError as e:
-            if attempt == 2:
-                raise
-            time.sleep(10)
+    # raise Exception("DNS not propagated")
+    return False
 
 
 def ssl_exists(site_name):
@@ -59,12 +36,13 @@ def issue_ssl(site_name):
 
     subprocess.run(
         [
+            "sudo",
             "certbot",
             "--nginx",
             "-d", site_name,
             "--non-interactive",
             "--agree-tos",
-            "-m", f"admin@{settings.site_suffix}",
+            "-m", settings.ssl_email or f"admin@{settings.site_suffix}",
             "--redirect",
         ],
         check=True,

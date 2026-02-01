@@ -16,6 +16,9 @@
   "your_site_name_suffix",
   "site_name",
   "site_link",
+  "company_logo",
+  "letterhead_header",
+  "letterhead_footer",
   "column_break_busb",
   "country",
   "currency",
@@ -248,13 +251,31 @@
    "label": "Provisioning Step",
    "options": "INIT\nSITE_CREATED\nAPPS_INSTALLED\nBOOTSTRAPPED\nCOMPLETED\nFAILED",
    "read_only": 1
+  },
+  {
+   "fieldname": "company_logo",
+   "fieldtype": "Attach Image",
+   "label": "Company Logo",
+   "make_attachment_public": 1
+  },
+  {
+   "fieldname": "letterhead_header",
+   "fieldtype": "Attach Image",
+   "label": "Letterhead Header Image",
+   "make_attachment_public": 1
+  },
+  {
+   "fieldname": "letterhead_footer",
+   "fieldtype": "Attach Image",
+   "label": "Letterhead Footer Image",
+   "make_attachment_public": 1
   }
  ],
  "grid_page_length": 50,
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-01 11:02:26.023063",
+ "modified": "2026-02-01 20:39:25.311802",
  "modified_by": "Administrator",
  "module": "Sowaan Cloud",
  "name": "Cloud Subscription",

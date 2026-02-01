@@ -6,19 +6,22 @@
  "engine": "InnoDB",
  "field_order": [
   "admin_password",
-  "site_suffix",
   "trial_days",
   "column_break_hjnj",
   "sql_password",
   "bench_path",
+  "column_break_eosl",
+  "site_suffix",
   "cloudfare_section",
   "cloudflare_api_secret",
   "server_ip",
   "column_break_lcuu",
   "cloudflare_zone_domain",
   "ssl_email",
+  "column_break_qcys",
   "enable_ssl",
-  "enable_dns"
+  "enable_dns",
+  "create_letterhead"
  ],
  "fields": [
   {
@@ -108,13 +111,28 @@
    "fieldname": "trial_days",
    "fieldtype": "Int",
    "label": "Trial Days"
+  },
+  {
+   "fieldname": "column_break_eosl",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_qcys",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "create_letterhead",
+   "fieldtype": "Check",
+   "label": "Create Letterhead"
   }
  ],
  "grid_page_length": 50,
+ "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-01-31 21:35:21.072734",
+ "modified": "2026-02-01 19:52:14.321856",
  "modified_by": "Administrator",
  "module": "Sowaan Cloud",
  "name": "Cloud Settings",

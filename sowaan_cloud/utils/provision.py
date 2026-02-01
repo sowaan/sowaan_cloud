@@ -10,6 +10,9 @@ from datetime import datetime
 from datetime import date, timedelta
 from sowaan_cloud.constants.packages import PACKAGE_APPS
 
+import base64
+import json
+from frappe.utils import get_url # type: ignore
 
 def frappe_user_exists():
     try:
@@ -79,6 +82,7 @@ def provision_from_subscription(docname):
         if sub.provisioning_step == "BOOTSTRAPPED":
             run_migrate(site_name, bench_path)
             create_cloudflare_dns(site_name)
+        
             frappe.enqueue(
                 "sowaan_cloud.utils.ssl.issue_ssl_async",
                 queue="long",
@@ -104,6 +108,29 @@ def provision_from_subscription(docname):
         )
 
         raise
+
+
+def get_branding_payload(sub):
+    base_url = get_url()  # sowaan.cloud (or whatever panel site)
+
+    def abs_url(path):
+        if not path:
+            return None
+        if path.startswith("http"):
+            return path
+        return base_url.rstrip("/") + path
+
+    settings = get_cloud_settings()
+
+    return {
+        "logo_file_url": abs_url(sub.company_logo),
+        "header_file_url": abs_url(sub.letterhead_header),
+        "footer_file_url": abs_url(sub.letterhead_footer),
+        "brand_name": sub.company_name,
+        "create_letterhead": settings.create_letterhead,
+    }
+
+
 
 def create_site_if_missing(site_name, bench_path, sql_password):
     site_path = os.path.join(bench_path, "sites", site_name)
@@ -205,6 +232,8 @@ def enforce_trial_validity(site_path, days):
 def bootstrap_site(site_name, doc):
     settings = get_cloud_settings()
     user_password = doc.get_password("user_password")
+    branding = get_branding_payload(doc)
+
     kwargs = {
         "company_name": doc.company_name,
         "abbr": doc.abbr,
@@ -213,16 +242,22 @@ def bootstrap_site(site_name, doc):
         "user_email": doc.user_email,
         "user_password": user_password,
         "package": doc.selected_package,
+        "branding": branding,
     }
 
-    kwargs_json = json.dumps(kwargs).replace('"', '\\"')
+    kwargs_json = json.dumps(kwargs)
+    kwargs_b64 = base64.b64encode(kwargs_json.encode()).decode()
+
+    safe_kwargs = json.dumps({"kwargs_b64": kwargs_b64})
+    bench_path = settings.bench_path
 
     run_as_frappe(
-        f'bench --site {site_name} execute '
-        f'sowaan_client.sowaan_client.run.bootstrap_site '
-        f'--kwargs "{kwargs_json}"',
-        settings.bench_path,
+        f"bench --site {site_name} execute "
+        f"sowaan_client.sowaan_client.run.bootstrap_site "
+        f"--kwargs '{safe_kwargs}'",
+        bench_path,
     )
+
 
 def run_migrate(site_name, bench_path):
     frappe.logger("provisioning").info(

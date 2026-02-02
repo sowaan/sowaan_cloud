@@ -45,6 +45,27 @@ frappe.ui.form.on("Cloud Subscription", {
 
         if (frm.is_new()) return;
 
+                // ➕ CREATE INSTANCE BUTTON
+        frm.add_custom_button(__("Create Instance"), () => {
+            frappe.confirm(
+                __("Start provisioning this instance?"),
+                () => {
+                    frappe.call({
+                        method: "sowaan_cloud.utils.provision.create_instance",
+                        args: { docname: frm.doc.name },
+                        freeze: true,
+                        freeze_message: __("Provisioning started…"),
+                        callback() {
+                            frappe.show_alert({
+                                message: __("Provisioning started"),
+                                indicator: "blue",
+                            });
+                            frm.reload_doc();
+                        },
+                    });
+                }
+            );
+        });
         // 🟢 ACTIVE
         if (frm.doc.status === "Active") {
             frm.page.set_indicator(__("Active"), "green");
@@ -67,27 +88,7 @@ frappe.ui.form.on("Cloud Subscription", {
             return;
         }
 
-        // ➕ CREATE INSTANCE BUTTON
-        frm.add_custom_button(__("Create Instance"), () => {
-            frappe.confirm(
-                __("Start provisioning this instance?"),
-                () => {
-                    frappe.call({
-                        method: "sowaan_cloud.utils.provision.create_instance",
-                        args: { docname: frm.doc.name },
-                        freeze: true,
-                        freeze_message: __("Provisioning started…"),
-                        callback() {
-                            frappe.show_alert({
-                                message: __("Provisioning started"),
-                                indicator: "blue",
-                            });
-                            frm.reload_doc();
-                        },
-                    });
-                }
-            );
-        });
+
     },
 
     selected_package(frm) {

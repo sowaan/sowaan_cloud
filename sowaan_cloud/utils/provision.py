@@ -65,15 +65,15 @@ def provision_from_subscription(docname):
         # 2️⃣ APPS
         if sub.provisioning_step == "SITE_CREATED":
             ensure_apps(site_name, bench_path, PACKAGE_APPS[sub.selected_package])
+            enforce_site_config(site_path, {"skip_setup_wizard": 1})
+            enforce_trial_validity(site_path, trial_days)
             update_subscription_state(sub, step="APPS_INSTALLED")
 
         # 3️⃣ BOOTSTRAP
         if sub.provisioning_step == "APPS_INSTALLED":
             trial_days = settings.trial_days or 15
-            enforce_site_config(site_path, {"skip_setup_wizard": 1})
-            enforce_trial_validity(site_path, trial_days)
+
             bootstrap_site(site_name, sub)
-            
             update_subscription_state(sub, step="BOOTSTRAPPED")
 
         # 4️⃣ COMPLETE

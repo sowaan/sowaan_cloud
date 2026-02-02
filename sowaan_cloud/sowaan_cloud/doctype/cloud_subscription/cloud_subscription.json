@@ -25,6 +25,7 @@
   "status",
   "provisioning_step",
   "provisioned",
+  "provisioning_loader",
   "section_break_lrkb",
   "selected_package",
   "package_details",
@@ -269,13 +270,17 @@
    "fieldtype": "Attach Image",
    "label": "Letterhead Footer Image",
    "make_attachment_public": 1
+  },
+  {
+   "fieldname": "provisioning_loader",
+   "fieldtype": "HTML"
   }
  ],
  "grid_page_length": 50,
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-01 20:39:25.311802",
+ "modified": "2026-02-02 13:15:17.331640",
  "modified_by": "Administrator",
  "module": "Sowaan Cloud",
  "name": "Cloud Subscription",

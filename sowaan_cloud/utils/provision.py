@@ -23,7 +23,6 @@ def frappe_user_exists():
     
 @frappe.whitelist()
 def create_instance(docname):
-
     doc = frappe.get_doc("Cloud Subscription", docname)
 
     doc.provisioning_logs = ""
@@ -40,7 +39,6 @@ def create_instance(docname):
     )
 
 def provision_from_subscription(docname):
-
     sub = frappe.get_doc("Cloud Subscription", docname) if isinstance(docname, str) else docname
 
     if not sub.site_name:
@@ -232,7 +230,8 @@ def enforce_trial_validity(site_path, days):
 def bootstrap_site(site_name, doc):
     settings = get_cloud_settings()
     user_password = doc.get_password("user_password")
-    branding = get_branding_payload(doc)
+    # branding = get_branding_payload(doc)
+    branding = None
 
     kwargs = {
         "company_name": doc.company_name,

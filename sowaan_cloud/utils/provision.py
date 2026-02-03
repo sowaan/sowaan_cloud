@@ -222,7 +222,9 @@ def enforce_trial_validity(site_path, days):
     enforce_site_config(site_path, {
         "trial_valid_till": valid_till,
     })
-
+    enforce_site_config(site_path, {
+        "valid_till": valid_till,
+    })
 
     frappe.logger("provisioning").info(
         f"[TRIAL] Valid till {valid_till}"

@@ -316,6 +316,8 @@ def run_as_frappe(cmd, bench_path, capture_output=False):
 
     return result
 
+
+
 # def run_as_frappe(cmd, bench_path, capture_output=False):
 #     """
 #     Run bench command as frappe user if available,

@@ -12,6 +12,8 @@ const PROVISION_STEPS = [
     { key: "COMPLETED", label: "Done" },
 ];
 
+const TERMINAL_STATUSES = ["Active", "Completed", "Failed"];
+
 /* -------------------------------------------------- */
 /* Inject CSS once                                   */
 /* -------------------------------------------------- */
@@ -45,7 +47,7 @@ frappe.ui.form.on("Cloud Subscription", {
 
         if (frm.is_new()) return;
 
-                // ➕ CREATE INSTANCE BUTTON
+        // ➕ CREATE INSTANCE BUTTON
         frm.add_custom_button(__("Create Instance"), () => {
             frappe.confirm(
                 __("Start provisioning this instance?"),
@@ -66,17 +68,27 @@ frappe.ui.form.on("Cloud Subscription", {
                 }
             );
         });
-        // 🟢 ACTIVE
-        if (frm.doc.status === "Active") {
-            frm.page.set_indicator(__("Active"), "green");
-            clear_provision_timer(frm);
-            return;
-        }
 
-        // 🔴 FAILED
-        if (frm.doc.status === "Failed") {
-            frm.page.set_indicator(__("Failed"), "red");
+        // 🛑 TERMINAL STATES — STOP EVERYTHING
+        if (TERMINAL_STATUSES.includes(frm.doc.status)) {
             clear_provision_timer(frm);
+
+            const indicatorMap = {
+                Active: "green",
+                Completed: "green",
+                Failed: "red",
+            };
+
+            frm.page.set_indicator(
+                __(frm.doc.status),
+                indicatorMap[frm.doc.status] || "blue"
+            );
+
+            // Allow retry only if Failed
+            if (frm.doc.status === "Failed") {
+                add_create_or_retry_button(frm);
+            }
+
             return;
         }
 

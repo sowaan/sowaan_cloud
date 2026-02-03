@@ -4,6 +4,7 @@ import subprocess
 import frappe # type: ignore
 from sowaan_cloud.utils.cloud_settings import get_cloud_settings
 import os
+from sowaan_cloud.utils.provision import run_as_frappe
 
 MAX_SSL_ATTEMPTS = 3
 
@@ -30,26 +31,41 @@ def ssl_exists(site_name):
         f"/etc/letsencrypt/live/{site_name}/fullchain.pem"
     )
 
+def issue_ssl(site_name, bench_path):
+    try:
+        
 
-def issue_ssl(site_name):
-    settings = get_cloud_settings()
+        run_as_frappe(
+            f"bench setup lets-encrypt {site_name}",
+            bench_path,
+            capture_output=True,
+        )
 
-    subprocess.run(
-        [
-            "sudo",
-            "certbot",
-            "--nginx",
-            "-d", site_name,
-            "--non-interactive",
-            "--agree-tos",
-            "-m", settings.ssl_email or f"admin@{settings.site_suffix}",
-            "--redirect",
-        ],
-        check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
+
+    except subprocess.CalledProcessError as e:
+        frappe.logger("provisioning").error(
+            f"SSL failed for {site_name}\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}"
+        )
+        raise
+# def issue_ssl(site_name):
+#     settings = get_cloud_settings()
+
+#     subprocess.run(
+#         [
+#             "sudo",
+#             "certbot",
+#             "--nginx",
+#             "-d", site_name,
+#             "--non-interactive",
+#             "--agree-tos",
+#             "-m", settings.ssl_email or f"admin@{settings.site_suffix}",
+#             "--redirect",
+#         ],
+#         check=True,
+#         stdout=subprocess.PIPE,
+#         stderr=subprocess.PIPE,
+#         text=True,
+#     )
 
 def retry_failed_ssl():
     """
@@ -103,7 +119,7 @@ def issue_ssl_async(site_name, docname):
         wait_for_dns(site_name, settings.server_ip)
 
         # 2️⃣ Issue SSL
-        issue_ssl(site_name)
+        issue_ssl(site_name, settings.bench_path)
 
         doc.ssl_status = "Issued"
         doc.ssl_last_error = ""

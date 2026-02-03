@@ -295,7 +295,6 @@ def run_as_frappe(cmd, bench_path, capture_output=False):
     full_cmd = f"cd {bench_path} && {cmd}"
 
     run_kwargs = {
-        "check": True,
         "text": True,
     }
 
@@ -305,18 +304,24 @@ def run_as_frappe(cmd, bench_path, capture_output=False):
             "stderr": subprocess.PIPE,
         })
 
-    if frappe_user_exists():
-        result = subprocess.run(
-            ["sudo", "-u", "frappe", "bash", "-lc", full_cmd],
-            **run_kwargs,
-        )
-    else:
-        result = subprocess.run(
-            ["bash", "-lc", full_cmd],
-            **run_kwargs,
-        )
+    try:
+        if frappe_user_exists():
+            return subprocess.run(
+                ["sudo", "-u", "frappe", "bash", "-lc", full_cmd],
+                check=True,
+                **run_kwargs,
+            )
+        else:
+            return subprocess.run(
+                ["bash", "-lc", full_cmd],
+                check=True,
+                **run_kwargs,
+            )
 
-    return result
+    except subprocess.CalledProcessError as e:
+        # 🔥 IMPORTANT: re-raise WITH output intact
+        raise e
+
 
 
 
@@ -472,5 +477,6 @@ def create_cloudflare_dns(site_name):
     r = requests.post(url, json=payload, headers=headers, timeout=10)
     data = r.json()
 
+    # frappe.log_error("DNS Creation Result", f"data values: \n{data}")
     if not data.get("success"):
         raise Exception(data)

@@ -33,20 +33,34 @@ def ssl_exists(site_name):
 
 def issue_ssl(site_name, bench_path):
     try:
-        
-
-        run_as_frappe(
+        result = run_as_frappe(
             f"bench setup lets-encrypt {site_name}",
             bench_path,
             capture_output=True,
         )
 
+        frappe.logger("provisioning").info(
+            f"[SSL] LetsEncrypt output for {site_name}\n{result.stdout}"
+        )
 
     except subprocess.CalledProcessError as e:
         frappe.logger("provisioning").error(
-            f"SSL failed for {site_name}\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}"
+            f"""
+                [SSL ERROR] LetsEncrypt failed for {site_name}
+
+                COMMAND:
+                bench setup lets-encrypt {site_name}
+
+                STDOUT:
+                {e.stdout}
+
+                STDERR:
+                {e.stderr}
+                """
         )
         raise
+
+    
 # def issue_ssl(site_name):
 #     settings = get_cloud_settings()
 
@@ -126,13 +140,18 @@ def issue_ssl_async(site_name, docname):
         doc.save(ignore_permissions=True)
 
     except Exception as e:
-        frappe.logger("provisioning").error(str(e))
+        # 🔥 Log full traceback (VERY IMPORTANT)
+        frappe.logger("provisioning").exception(
+            f"[SSL] Failed for site {site_name}"
+        )
+        
 
+        # 📌 Update subscription status
         doc.ssl_status = "Failed"
         doc.ssl_last_error = str(e)
         doc.save(ignore_permissions=True)
 
-        # 3️⃣ Retry later if attempts left
+        # 🔁 Retry later if attempts remain
         if doc.ssl_attempts < MAX_SSL_ATTEMPTS:
             frappe.enqueue(
                 "sowaan_cloud.utils.ssl.issue_ssl_async",

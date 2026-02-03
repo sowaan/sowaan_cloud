@@ -69,9 +69,17 @@ frappe.ui.form.on("Cloud Subscription", {
             );
         });
 
+        if (frm.doc.status === "Active" || frm.doc.status === "Completed") {
+            frm.doc.provisioning_step = "COMPLETED";
+        }
         // 🛑 TERMINAL STATES — STOP EVERYTHING
         if (TERMINAL_STATUSES.includes(frm.doc.status)) {
             clear_provision_timer(frm);
+
+            // 🧹 CLEAR LOADER UI
+            if (frm.fields_dict.provisioning_loader) {
+                frm.fields_dict.provisioning_loader.$wrapper.empty();
+            }
 
             const indicatorMap = {
                 Active: "green",
@@ -84,7 +92,6 @@ frappe.ui.form.on("Cloud Subscription", {
                 indicatorMap[frm.doc.status] || "blue"
             );
 
-            // Allow retry only if Failed
             if (frm.doc.status === "Failed") {
                 add_create_or_retry_button(frm);
             }
@@ -98,6 +105,19 @@ frappe.ui.form.on("Cloud Subscription", {
             show_provisioning_loader(frm);
             start_auto_refresh(frm);
             return;
+        }
+        
+        if (frm.doc.status === "Active") {
+            frm.fields_dict.provisioning_loader.$wrapper.html(`
+                <div style="text-align:center; padding:20px;">
+                    <div style="font-size:18px; color:#28a745; font-weight:600;">
+                        ✅ Provisioning Complete
+                    </div>
+                    <div class="text-muted" style="margin-top:6px;">
+                        Your instance is ready to use.
+                    </div>
+                </div>
+            `);
         }
 
 

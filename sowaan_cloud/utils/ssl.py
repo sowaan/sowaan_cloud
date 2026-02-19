@@ -33,12 +33,14 @@ def ssl_exists(site_name):
 
 def issue_ssl(site_name, bench_path):
     try:
-        cmd = f"bench lets-encrypt {site_name}"
+        cmd = f'sudo bash -lc "cd {bench_path} && bench setup lets-encrypt {site_name}"'
 
-        result = run_as_frappe(
+        result = subprocess.run(
             cmd,
-            bench_path,
+            shell=True,
             capture_output=True,
+            text=True,
+            check=True,
         )
 
         frappe.logger("provisioning").info(

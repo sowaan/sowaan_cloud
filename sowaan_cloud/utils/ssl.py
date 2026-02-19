@@ -33,7 +33,7 @@ def ssl_exists(site_name):
 
 def issue_ssl(site_name, bench_path):
     try:
-        cmd = f"sudo -H bench lets-encrypt {site_name}"
+        cmd = f"bench lets-encrypt {site_name}"
 
         result = run_as_frappe(
             cmd,

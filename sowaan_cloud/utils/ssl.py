@@ -33,7 +33,7 @@ def ssl_exists(site_name):
 
 def issue_ssl(site_name, bench_path):
     try:
-        cmd = f'sudo bash -lc "cd {bench_path} && bench setup lets-encrypt {site_name} --yes"'
+        cmd = f'sudo bash -lc "cd {bench_path} && bench setup lets-encrypt {site_name} --y"'
 
         result = subprocess.run(
             cmd,

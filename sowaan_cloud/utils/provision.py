@@ -8,7 +8,6 @@ import json
 import pwd
 from datetime import datetime
 from datetime import date, timedelta
-from sowaan_cloud.constants.packages import PACKAGE_APPS
 
 import base64
 import json
@@ -64,7 +63,8 @@ def provision_from_subscription(docname):
 
         # 2️⃣ APPS
         if sub.provisioning_step == "SITE_CREATED":
-            ensure_apps(site_name, bench_path, PACKAGE_APPS[sub.selected_package])
+            pkg = frappe.get_doc("Cloud Package", sub.selected_package)
+            ensure_apps(site_name, bench_path, [row.app_name for row in pkg.apps])
             enforce_site_config(site_path, {"skip_setup_wizard": 1})
             trial_days = settings.trial_days or 15
             enforce_trial_validity(site_path, trial_days)
@@ -98,12 +98,13 @@ def provision_from_subscription(docname):
             )
 
     except Exception as e:
-        err = analyze_provisioning_error(str(e))
+        raw = getattr(e, "output_combined", None) or getattr(e, "stderr", None) or str(e)
+        err = analyze_provisioning_error(raw)
         update_subscription_state(
             sub,
             status="Failed",
             step=sub.provisioning_step,
-            error=err["message"],
+            error=f"{err['message']}\n\n{raw}",
         )
 
         raise
@@ -236,6 +237,8 @@ def bootstrap_site(site_name, doc):
     # branding = get_branding_payload(doc)
     branding = None
 
+    pkg = frappe.get_doc("Cloud Package", doc.selected_package)
+
     kwargs = {
         "company_name": doc.company_name,
         "abbr": doc.abbr,
@@ -244,6 +247,8 @@ def bootstrap_site(site_name, doc):
         "user_email": doc.user_email,
         "user_password": user_password,
         "package": doc.selected_package,
+        "modules": [row.module_name for row in pkg.modules],
+        "roles": [row.role for row in pkg.roles],
         "branding": branding,
     }
 
@@ -294,33 +299,38 @@ def run_as_frappe(cmd, bench_path, capture_output=False):
     bench_path = os.path.abspath(bench_path)
     full_cmd = f"cd {bench_path} && {cmd}"
 
+    # always capture both so errors from bench execute (which writes to stdout) are visible
     run_kwargs = {
         "text": True,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
     }
-
-    if capture_output:
-        run_kwargs.update({
-            "stdout": subprocess.PIPE,
-            "stderr": subprocess.PIPE,
-        })
 
     try:
         if frappe_user_exists():
-            return subprocess.run(
+            result = subprocess.run(
                 ["sudo", "-u", "frappe", "bash", "-lc", full_cmd],
                 check=True,
                 **run_kwargs,
             )
         else:
-            return subprocess.run(
+            result = subprocess.run(
                 ["bash", "-lc", full_cmd],
                 check=True,
                 **run_kwargs,
             )
 
+        if result.stdout:
+            frappe.logger("provisioning").info(result.stdout)
+
+        return result
+
     except subprocess.CalledProcessError as e:
-        # 🔥 IMPORTANT: re-raise WITH output intact
-        raise e
+        output = "\n".join(filter(None, [e.stdout, e.stderr]))
+        frappe.logger("provisioning").error(f"[CMD FAILED] {cmd}\n{output}")
+        # attach combined output so provision_from_subscription can log it
+        e.output_combined = output
+        raise
 
 
 

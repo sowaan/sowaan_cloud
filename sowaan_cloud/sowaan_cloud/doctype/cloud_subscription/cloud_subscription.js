@@ -234,34 +234,6 @@ function clear_provision_timer(frm) {
 /* Package Details Renderer                           */
 /* -------------------------------------------------- */
 function render_package_details(frm) {
-    const packages = {
-        ZATCA_STARTER: `
-            <b>ZATCA Starter Package</b>
-            <ul>
-                <li>ZATCA Phase 2 onboarding</li>
-                <li>B2B & B2C invoices</li>
-                <li>KSA Chart of Accounts</li>
-                <li>Single warehouse stock</li>
-            </ul>
-        `,
-        ZATCA_RETAIL_POS: `
-            <b>ZATCA Retail & POS</b>
-            <ul>
-                <li>Everything in Starter</li>
-                <li>POS setup (single outlet)</li>
-                <li>Live ZATCA clearance</li>
-            </ul>
-        `,
-        ZATCA_COMPLETE_SME: `
-            <b>ZATCA Complete SME</b>
-            <ul>
-                <li>Multi warehouse</li>
-                <li>VAT, AR/AP</li>
-                <li>Full accounting</li>
-            </ul>
-        `,
-    };
-
     if (!frm.doc.selected_package) {
         frm.set_df_property(
             "package_details",
@@ -271,9 +243,18 @@ function render_package_details(frm) {
         return;
     }
 
-    frm.set_df_property(
-        "package_details",
-        "options",
-        packages[frm.doc.selected_package]
+    frappe.db.get_value(
+        "Cloud Package",
+        frm.doc.selected_package,
+        "description",
+        (r) => {
+            frm.set_df_property(
+                "package_details",
+                "options",
+                r && r.description
+                    ? r.description
+                    : `<span class="text-muted">No description available</span>`
+            );
+        }
     );
 }

@@ -142,9 +142,9 @@
   },
   {
    "fieldname": "selected_package",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "label": "Package",
-   "options": "\nZATCA_STARTER\nZATCA_RETAIL_POS\nZATCA_COMPLETE_SME",
+   "options": "Cloud Package",
    "reqd": 1
   },
   {

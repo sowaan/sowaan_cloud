@@ -4,6 +4,8 @@ PACKAGES = [
     {
         "package_name": "ZATCA_STARTER",
         "title": "ZATCA Starter",
+        "price": 0,
+        "users_limit": 5,
         "description": (
             "<b>ZATCA Starter Package</b>"
             "<ul>"
@@ -20,6 +22,8 @@ PACKAGES = [
     {
         "package_name": "ZATCA_RETAIL_POS",
         "title": "ZATCA Retail POS",
+        "price": 0,
+        "users_limit": 10,
         "description": (
             "<b>ZATCA Retail &amp; POS</b>"
             "<ul>"
@@ -35,6 +39,8 @@ PACKAGES = [
     {
         "package_name": "ZATCA_COMPLETE_SME",
         "title": "ZATCA Complete SME",
+        "price": 0,
+        "users_limit": 0,
         "description": (
             "<b>ZATCA Complete SME</b>"
             "<ul>"
@@ -57,6 +63,8 @@ def execute():
         if frappe.db.exists("Cloud Package", pkg["package_name"]):
             doc = frappe.get_doc("Cloud Package", pkg["package_name"])
             doc.title = pkg["title"]
+            doc.price = pkg.get("price", 0)
+            doc.users_limit = pkg.get("users_limit", 0)
             doc.description = pkg.get("description", "")
             doc.save(ignore_permissions=True)
         else:
@@ -64,6 +72,8 @@ def execute():
                 "doctype": "Cloud Package",
                 "package_name": pkg["package_name"],
                 "title": pkg["title"],
+                "price": pkg.get("price", 0),
+                "users_limit": pkg.get("users_limit", 0),
                 "description": pkg.get("description", ""),
                 "apps": [{"app_name": a} for a in pkg["apps"]],
                 "modules": [{"module_name": m} for m in pkg["modules"]],

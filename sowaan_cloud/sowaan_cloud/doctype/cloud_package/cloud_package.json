@@ -8,6 +8,8 @@
  "field_order": [
   "package_name",
   "title",
+  "price",
+  "users_limit",
   "column_break_1",
   "description",
   "apps_section",
@@ -32,6 +34,18 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Title"
+  },
+  {
+   "fieldname": "price",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Price (SAR/month)",
+   "default": "0"
+  },
+  {
+   "fieldname": "users_limit",
+   "fieldtype": "Int",
+   "label": "Users Limit"
   },
   {
    "fieldname": "column_break_1",
@@ -101,6 +115,10 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Guest"
   }
  ],
  "row_format": "Dynamic",

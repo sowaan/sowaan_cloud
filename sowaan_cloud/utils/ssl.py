@@ -10,8 +10,13 @@ MAX_SSL_ATTEMPTS = 3
 
 
 def wait_for_dns(site_name, expected_ip, timeout=120, interval=5):
-    start = time.time()
+    if not expected_ip or not expected_ip.strip():
+        frappe.logger("provisioning").error(
+            "[DNS] server_ip is not configured in Cloud Settings — skipping DNS wait"
+        )
+        return False
 
+    start = time.time()
     while time.time() - start < timeout:
         try:
             resolved_ip = socket.gethostbyname(site_name)
@@ -22,7 +27,6 @@ def wait_for_dns(site_name, expected_ip, timeout=120, interval=5):
 
         time.sleep(interval)
 
-    # raise Exception("DNS not propagated")
     return False
 
 
@@ -33,7 +37,6 @@ def ssl_exists(site_name):
 
 def issue_ssl(site_name, bench_path):
     try:
-        #cmd = f'sudo bash -lc "cd {bench_path} && bench setup lets-encrypt {site_name} --y"'
         cmd = f'echo "y" | sudo bash -lc "cd {bench_path} && bench setup lets-encrypt {site_name} --non-interactive"'
         result = subprocess.run(
             cmd,
@@ -41,26 +44,22 @@ def issue_ssl(site_name, bench_path):
             capture_output=True,
             text=True,
             check=True,
+            timeout=300,
         )
 
         frappe.logger("provisioning").info(
             f"[SSL] LetsEncrypt output for {site_name}\n{result.stdout}"
         )
 
+    except subprocess.TimeoutExpired:
+        frappe.logger("provisioning").error(
+            f"[SSL ERROR] LetsEncrypt timed out after 300s for {site_name}"
+        )
+        raise Exception(f"SSL issuance timed out for {site_name}. certbot did not complete within 5 minutes.")
+
     except subprocess.CalledProcessError as e:
         frappe.logger("provisioning").error(
-            f"""
-                [SSL ERROR] LetsEncrypt failed for {site_name}
-
-                COMMAND:
-                bench setup lets-encrypt {site_name}
-
-                STDOUT:
-                {e.stdout}
-
-                STDERR:
-                {e.stderr}
-                """
+            f"[SSL ERROR] LetsEncrypt failed for {site_name}\nSTDOUT: {e.stdout}\nSTDERR: {e.stderr}"
         )
         raise
 
@@ -134,7 +133,13 @@ def issue_ssl_async(site_name, docname):
 
     try:
         # 1️⃣ Wait for DNS
-        wait_for_dns(site_name, settings.server_ip)
+        dns_ok = wait_for_dns(site_name, settings.server_ip)
+        if not dns_ok:
+            expected = settings.server_ip or "(not configured)"
+            raise Exception(
+                f"DNS for {site_name} did not resolve to {expected} within the timeout. "
+                "Check server_ip in Cloud Settings and that the DNS record was created."
+            )
 
         # 2️⃣ Issue SSL
         issue_ssl(site_name, settings.bench_path)

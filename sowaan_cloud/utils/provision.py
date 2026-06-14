@@ -40,12 +40,22 @@ def create_instance(docname):
 def provision_from_subscription(docname):
     sub = frappe.get_doc("Cloud Subscription", docname) if isinstance(docname, str) else docname
 
+    settings = get_cloud_settings()
+
+    if not settings.server_ip or not settings.server_ip.strip():
+        update_subscription_state(
+            sub,
+            status="Failed",
+            step=sub.provisioning_step or "INIT",
+            error="Provisioning aborted: server_ip is not configured in Cloud Settings.",
+        )
+        return
+
     if not sub.site_name:
-        sub.site_name = f"{sub.instance_name}.{settings.your_site_name_suffix}"
+        sub.site_name = f"{sub.instance_name}.{settings.site_suffix}"
         sub.save(ignore_permissions=True)
     site_name = sub.site_name
 
-    settings = get_cloud_settings()
     bench_path = settings.bench_path
     sql_password = settings.get_password("sql_password")  # Replace with actual DB root password
     site_path = os.path.join(bench_path, "sites", site_name)

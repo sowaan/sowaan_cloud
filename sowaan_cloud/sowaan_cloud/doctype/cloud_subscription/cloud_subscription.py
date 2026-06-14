@@ -132,9 +132,34 @@ def create_subscription(
 		"selected_package": selected_package,
 		"country": country,
 		"currency": "SAR",        # always SAR — not user-controlled
-		"status": "Draft",
+		"status": "Provisioning",
+		"provisioning_logs": "",
 	})
 	doc.insert(ignore_permissions=True)
 	frappe.db.commit()
 
+	frappe.enqueue(
+		"sowaan_cloud.utils.provision.provision_from_subscription",
+		queue="long",
+		docname=doc.name,
+		timeout=3600,
+		is_async=True,
+	)
+
 	return {"name": doc.name, "status": doc.status}
+
+
+@frappe.whitelist(allow_guest=True)
+def get_subscription_status(name):
+	"""Poll endpoint for the frontend to track async provisioning progress."""
+	try:
+		doc = frappe.get_doc("Cloud Subscription", name)
+	except frappe.DoesNotExistError:
+		frappe.throw("Subscription not found.", frappe.DoesNotExistError)
+
+	return {
+		"status": doc.status,
+		"provisioning_step": doc.provisioning_step,
+		"site_name": doc.site_name,
+		"error": doc.provisioning_logs if doc.status == "Failed" else None,
+	}

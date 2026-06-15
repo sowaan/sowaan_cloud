@@ -26,4 +26,3 @@ def get_context(context):
 
     context.js_file = js_file
     context.css_file = css_file
-    context.no_breadcrumbs = 1

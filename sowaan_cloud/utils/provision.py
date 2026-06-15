@@ -230,15 +230,19 @@ def enforce_site_config(site_path, updates=None):
 def enforce_trial_validity(site_path, days):
     valid_till = (date.today() + timedelta(days=days)).isoformat()
 
-    enforce_site_config(site_path, {
-        "trial_valid_till": valid_till,
-    })
-    enforce_site_config(site_path, {
-        "valid_till": valid_till,
-    })
+    config_path = os.path.join(site_path, "site_config.json")
+    with open(config_path) as f:
+        config = json.load(f)
+
+    quota = config.get("quota", {})
+    quota["valid_till"] = valid_till
+    config["quota"] = quota
+
+    with open(config_path, "w") as f:
+        json.dump(config, f, indent=2)
 
     frappe.logger("provisioning").info(
-        f"[TRIAL] Valid till {valid_till}"
+        f"[TRIAL] quota.valid_till set to {valid_till}"
     )
 
 def bootstrap_site(site_name, doc):

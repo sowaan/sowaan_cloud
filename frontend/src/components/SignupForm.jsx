@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { apiFetch } from '../lib/api';
+import { useSiteSuffix } from '../lib/useSiteSuffix';
 import ProvisioningStatus from './ProvisioningStatus';
 
 function Field({ id, label, required, hint, error, children }) {
@@ -53,6 +54,7 @@ function validate(form) {
 }
 
 export default function SignupForm({ selectedPackage }) {
+  const siteSuffix = useSiteSuffix();
   const [form, setForm] = useState({
     company_name: '',
     abbr: '',
@@ -146,7 +148,7 @@ export default function SignupForm({ selectedPackage }) {
     return (
       <ProvisioningStatus
         subscriptionName={subscriptionName}
-        previewUrl={form.instance_name ? `${form.instance_name}.sowaan.cloud` : null}
+        previewUrl={form.instance_name ? `${form.instance_name}.${siteSuffix}` : null}
       />
     );
   }
@@ -194,7 +196,7 @@ export default function SignupForm({ selectedPackage }) {
             <svg className="h-3.5 w-3.5 shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
             </svg>
-            {form.instance_name}.sowaan.cloud
+            {form.instance_name}.{siteSuffix}
           </p>
         )}
       </Field>

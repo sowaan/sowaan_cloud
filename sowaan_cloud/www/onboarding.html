@@ -1,0 +1,16 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Sowaan Cloud — ERP for Saudi Business{% endblock %}
+
+{% block head_include %}
+{% if css_file %}
+<link rel="stylesheet" href="{{ css_file }}" />
+{% endif %}
+{% endblock %}
+
+{% block page_content %}
+<div id="root"></div>
+{% if js_file %}
+<script type="module" src="{{ js_file }}"></script>
+{% endif %}
+{% endblock %}

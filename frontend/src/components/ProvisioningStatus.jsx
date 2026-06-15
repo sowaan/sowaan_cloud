@@ -124,13 +124,19 @@ export default function ProvisioningStatus({ subscriptionName, previewUrl }) {
             href={siteUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-base font-bold text-white shadow-md shadow-blue-200 transition hover:bg-blue-700 hover:shadow-blue-300"
+            className="cta-button inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-base font-bold text-white shadow-md shadow-blue-200 transition hover:bg-blue-700 hover:shadow-blue-300"
           >
             Open your ERP
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
             </svg>
           </a>
+        )}
+        {siteUrl && (
+          <p className="mx-auto mt-4 max-w-xs text-xs text-slate-400">
+            If the link doesn&apos;t open right away, please wait a minute — your
+            domain is still being activated.
+          </p>
         )}
       </div>
     );

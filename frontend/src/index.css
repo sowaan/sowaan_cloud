@@ -18,3 +18,20 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+ * Frappe's website.bundle.css ships an unlayered `a { background-color:
+ * transparent }` rule. Tailwind's bg-* utilities live inside `@layer
+ * utilities`, and unlayered rules always win over layered ones regardless
+ * of specificity — so any <a> styled as a solid button loses its
+ * background on pages rendered through Frappe's web template. This
+ * unlayered class (with higher specificity than the bare `a` selector)
+ * restores it.
+ */
+.cta-button {
+  background-color: var(--color-blue-600);
+}
+
+.cta-button:hover {
+  background-color: var(--color-blue-700);
+}

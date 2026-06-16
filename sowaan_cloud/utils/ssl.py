@@ -1,5 +1,6 @@
 import time
 import socket
+import shlex
 import subprocess
 import frappe # type: ignore
 from sowaan_cloud.utils.cloud_settings import get_cloud_settings
@@ -37,12 +38,14 @@ def ssl_exists(site_name):
 
 def issue_ssl(site_name, bench_path):
     try:
-        cmd = f'echo "y" | sudo bash -lc "cd {bench_path} && bench setup lets-encrypt {site_name} --non-interactive"'
         result = subprocess.run(
-            cmd,
-            shell=True,
-            capture_output=True,
+            [
+                "sudo", "bash", "-lc",
+                f"cd {shlex.quote(bench_path)} && bench setup lets-encrypt {shlex.quote(site_name)} --non-interactive",
+            ],
+            input="y\n",
             text=True,
+            capture_output=True,
             check=True,
             timeout=300,
         )

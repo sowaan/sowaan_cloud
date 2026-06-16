@@ -9,7 +9,25 @@ from erpnext.accounts.doctype.account.chart_of_accounts.chart_of_accounts import
 
 from erpnext.setup.setup_wizard.operations.taxes_setup import setup_taxes_and_charges # type: ignore
 
-DEFAULT_PASSWORD = "Abc@12345"
+# Maps country to IANA timezone. Falls back to UTC for unlisted countries.
+_COUNTRY_TIMEZONE = {
+    "Saudi Arabia":           "Asia/Riyadh",
+    "United Arab Emirates":   "Asia/Dubai",
+    "Kuwait":                 "Asia/Kuwait",
+    "Bahrain":                "Asia/Bahrain",
+    "Qatar":                  "Asia/Qatar",
+    "Oman":                   "Asia/Muscat",
+    "Pakistan":               "Asia/Karachi",
+    "India":                  "Asia/Kolkata",
+    "Egypt":                  "Africa/Cairo",
+    "Jordan":                 "Asia/Amman",
+    "United Kingdom":         "Europe/London",
+    "United States":          "America/New_York",
+}
+
+
+def _get_timezone(country):
+    return _COUNTRY_TIMEZONE.get(country, "UTC")
 
 
 # ------------------------------------------------------------
@@ -31,16 +49,14 @@ def bootstrap_site(company_name, abbr, country, currency, user_email=None, packa
         user_email=user_email,
     )
 
-    # Post-setup customization only
     enable_modules_for_company(company, package)
     ensure_default_business_user(company, package, user_email)
     ensure_warehouse_types()
     setup_taxes_and_charges(company_name, country)
 
     ensure_default_taxes(company, country)
-
     ensure_tax_categories(company, country)
-    # ensure_item_tax_templates(company, country)  # NEW
+
     frappe.db.commit()
 
 
@@ -51,11 +67,7 @@ def bootstrap_site(company_name, abbr, country, currency, user_email=None, packa
 def run_setup_wizard(company_name, abbr, country, currency, user_email):
     """
     Executes ERPNext Setup Wizard programmatically.
-    This creates:
-    - Company
-    - COA
-    - Fiscal Year
-    - Default taxes & accounts
+    Creates: Company, COA, Fiscal Year, default taxes & accounts.
     """
 
     if frappe.db.exists("Company", company_name):
@@ -64,17 +76,21 @@ def run_setup_wizard(company_name, abbr, country, currency, user_email):
     start_date, end_date = get_current_fiscal_year_dates()
     coa = pick_country_coa(country)
 
+    # Generate a random setup-wizard password; the actual user password is set
+    # separately in ensure_default_business_user.
+    setup_password = frappe.generate_hash(length=16)
+
     args = {
         "company_name": company_name,
         "company_abbr": abbr,
         "country": country,
         "currency": currency,
         "chart_of_accounts": coa,
-        "timezone": "Asia/Riyadh",
+        "timezone": _get_timezone(country),
         "language": "english",
         "email": user_email or "admin@example.com",
         "full_name": "Operations User",
-        "password": DEFAULT_PASSWORD,
+        "password": setup_password,
         "fy_start_date": start_date,
         "fy_end_date": end_date,
     }
@@ -139,7 +155,7 @@ def ensure_default_business_user(company, package, email=None):
             "last_name": "User",
             "enabled": 1,
             "send_welcome_email": 0,
-            "new_password": DEFAULT_PASSWORD,
+            "new_password": frappe.generate_hash(length=16),
         }).insert(ignore_permissions=True)
 
     assign_roles(user, package)
@@ -148,7 +164,6 @@ def ensure_default_business_user(company, package, email=None):
 
     user.save(ignore_permissions=True)
     return user
-
 
 
 def get_user_email(company, provided_email=None):
@@ -196,6 +211,7 @@ def restrict_user_to_company(user, company):
         "apply_to_all_doctypes": 1,
     }).insert(ignore_permissions=True)
 
+
 def enable_modules_for_company(company, package):
     from sowaan_cloud.constants.packages import PACKAGE_FEATURES
 
@@ -206,14 +222,12 @@ def enable_modules_for_company(company, package):
     modules = config.get("modules", [])
 
     company.reload()
-
-    company.enabled_modules = []  # reset
+    company.enabled_modules = []
     for module in modules:
-        company.append("enabled_modules", {
-            "module": module
-        })
+        company.append("enabled_modules", {"module": module})
 
     company.save(ignore_permissions=True)
+
 
 # ------------------------------------------------------------
 # Warehouses
@@ -244,9 +258,11 @@ def get_current_fiscal_year_dates():
     today = date.today()
     return date(today.year, 1, 1), date(today.year, 12, 31)
 
-#------------------------------------------------------------
+
+# ------------------------------------------------------------
 # TAXES RELATED FUNCTIONS
-#------------------------------------------------------------
+# ------------------------------------------------------------
+
 def has_default_taxes(company):
     return (
         frappe.db.exists(
@@ -259,42 +275,27 @@ def has_default_taxes(company):
         )
     )
 
+
 def ensure_default_taxes(company, country):
     """
     Ensure country-specific taxes exist.
     ERPNext-first, custom fallback second.
     """
 
-    # 1️⃣ Let ERPNext win if it already created taxes
     if has_default_taxes(company):
         return
 
-    # 2️⃣ Otherwise, fallback to custom profiles
     profile = get_country_tax_profile(country)
     if not profile:
         return
 
     tax_account = ensure_tax_account(company, profile)
 
-    ensure_tax_template(
-        company,
-        profile,
-        tax_account,
-        "Sales Taxes and Charges Template",
-    )
+    ensure_tax_template(company, profile, tax_account, "Sales Taxes and Charges Template")
+    ensure_tax_template(company, profile, tax_account, "Purchase Taxes and Charges Template")
 
-    ensure_tax_template(
-        company,
-        profile,
-        tax_account,
-        "Purchase Taxes and Charges Template",
-    )
 
 def ensure_tax_account(company, profile):
-    """
-    Creates tax account if missing.
-    """
-
     if frappe.db.exists(
         "Account",
         {"company": company.name, "account_name": profile["account_name"]},
@@ -306,16 +307,11 @@ def ensure_tax_account(company, profile):
 
     parent_account = frappe.db.get_value(
         "Account",
-        {
-            "company": company.name,
-            "account_type": "Tax",
-            "is_group": 1,
-        },
+        {"company": company.name, "account_type": "Tax", "is_group": 1},
         "name",
     )
 
     if not parent_account:
-        # Fallback to root
         parent_account = frappe.db.get_value(
             "Account",
             {"company": company.name, "is_group": 1},
@@ -333,12 +329,8 @@ def ensure_tax_account(company, profile):
 
     return account
 
-def ensure_tax_template(company, profile, tax_account, charge_type):
-    """
-    charge_type: 'Sales Taxes and Charges Template'
-                 'Purchase Taxes and Charges Template'
-    """
 
+def ensure_tax_template(company, profile, tax_account, charge_type):
     template_name = f"{profile['tax_name']} - {company.abbr}"
 
     if frappe.db.exists(charge_type, template_name):
@@ -359,6 +351,7 @@ def ensure_tax_template(company, profile, tax_account, charge_type):
 
     doc.insert(ignore_permissions=True)
 
+
 def get_country_tax_profile(country):
     profiles = {
         "Saudi Arabia": {
@@ -367,50 +360,26 @@ def get_country_tax_profile(country):
             "account_name": "VAT 15%",
             "account_type": "Tax",
         },
-
     }
     return profiles.get(country)
 
-#------------------------------------------------------------
+
+# ------------------------------------------------------------
 # TAX CATEGORIES
-#------------------------------------------------------------
+# ------------------------------------------------------------
 
 def get_country_tax_categories(country):
-    """
-    Defines tax categories per country.
-    Extend safely as needed.
-    """
-
     categories = {
         "Saudi Arabia": [
-            {
-                "name": "Standard VAT",
-                "description": "Standard VAT 15%",
-                "rate": 15,
-                "default": 1,
-            },
-            {
-                "name": "Zero Rated",
-                "description": "Zero-rated VAT",
-                "rate": 0,
-                "default": 0,
-            },
-            {
-                "name": "Exempt",
-                "description": "VAT Exempt",
-                "rate": 0,
-                "default": 0,
-            },
+            {"name": "Standard VAT", "description": "Standard VAT 15%", "rate": 15, "default": 1},
+            {"name": "Zero Rated",   "description": "Zero-rated VAT",    "rate": 0,  "default": 0},
+            {"name": "Exempt",       "description": "VAT Exempt",        "rate": 0,  "default": 0},
         ],
     }
-
     return categories.get(country, [])
 
-def ensure_tax_category(company, category):
-    """
-    Creates Tax Category if missing.
-    """
 
+def ensure_tax_category(company, category):
     name = f"{category['name']} - {company.abbr}"
 
     if frappe.db.exists("Tax Category", name):
@@ -425,31 +394,6 @@ def ensure_tax_category(company, category):
 
     return doc
 
-def link_tax_category_to_templates(
-    company,
-    category,
-    sales_template,
-    purchase_template,
-):
-    """
-    Links tax category with tax templates.
-    """
-
-    # Sales
-    frappe.db.set_value(
-        "Sales Taxes and Charges Template",
-        sales_template.name,
-        "tax_category",
-        f"{category['name']} - {company.abbr}",
-    )
-
-    # Purchase
-    frappe.db.set_value(
-        "Purchase Taxes and Charges Template",
-        purchase_template.name,
-        "tax_category",
-        f"{category['name']} - {company.abbr}",
-    )
 
 def template_has_rate(template_name, rate, child_doctype):
     taxes = frappe.get_all(
@@ -459,13 +403,13 @@ def template_has_rate(template_name, rate, child_doctype):
     )
     return any(float(t.rate) == float(rate) for t in taxes)
 
+
 def ensure_tax_categories(company, country):
     categories = get_country_tax_categories(country)
 
     if not categories:
         return
 
-    # Get existing tax templates
     sales_templates = frappe.get_all(
         "Sales Taxes and Charges Template",
         filters={"company": company.name},
@@ -481,105 +425,33 @@ def ensure_tax_categories(company, country):
     for cat in categories:
         tax_category = ensure_tax_category(company, cat)
 
-        # Match templates by rate or title
         for st in sales_templates:
             if template_has_rate(st.name, cat["rate"], "Sales Taxes and Charges"):
                 frappe.db.set_value(
                     "Sales Taxes and Charges Template",
-                    st.name,
-                    "tax_category",
-                    tax_category.name,
+                    st.name, "tax_category", tax_category.name,
                 )
-
 
         for pt in purchase_templates:
-            if str(cat["rate"]) in pt.title:
+            if template_has_rate(pt.name, cat["rate"], "Purchase Taxes and Charges"):
                 frappe.db.set_value(
                     "Purchase Taxes and Charges Template",
-                    pt.name,
-                    "tax_category",
-                    tax_category.name,
+                    pt.name, "tax_category", tax_category.name,
                 )
 
 
-#------------------------------------------------------------
+# ------------------------------------------------------------
 # ITEM TAX TEMPLATES
-#------------------------------------------------------------
+# ------------------------------------------------------------
 
 def get_country_item_tax_profiles(country):
     return {
         "Saudi Arabia": [
-            {
-                "name": "Standard VAT",
-                "rate": 15,
-                "tax_category": "Standard VAT",
-                "default": 1,
-            },
-            {
-                "name": "Zero Rated VAT",
-                "rate": 0,
-                "tax_category": "Zero Rated",
-                "default": 0,
-            },
-            {
-                "name": "Exempt VAT",
-                "rate": 0,
-                "tax_category": "Exempt",
-                "default": 0,
-            },
+            {"name": "Standard VAT", "rate": 15, "tax_category": "Standard VAT", "default": 1},
+            {"name": "Zero Rated VAT", "rate": 0, "tax_category": "Zero Rated",  "default": 0},
+            {"name": "Exempt VAT",     "rate": 0, "tax_category": "Exempt",       "default": 0},
         ]
     }.get(country, [])
-
-def find_tax_template_by_rate(company, rate, template_doctype, child_doctype):
-    templates = frappe.get_all(
-        template_doctype,
-        filters={"company": company.name},
-        fields=["name"],
-    )
-
-    for t in templates:
-        if template_has_rate(t.name, rate, child_doctype):
-            return t.name
-
-    return None
-
-def ensure_item_tax_template(company, profile):
-    name = f"{profile['name']} - {company.abbr}"
-
-    if frappe.db.exists("Item Tax Template", name):
-        return
-
-    sales_tax = find_tax_template_by_rate(
-        company, profile["rate"],
-        "Sales Taxes and Charges Template",
-        "Sales Taxes and Charges",
-    )
-
-    purchase_tax = find_tax_template_by_rate(
-        company, profile["rate"],
-        "Purchase Taxes and Charges Template",
-        "Purchase Taxes and Charges",
-    )
-
-    if not sales_tax and not purchase_tax:
-        return
-
-    doc = frappe.get_doc({
-        "doctype": "Item Tax Template",
-        "name": name,
-        "company": company.name,
-        "is_default": profile.get("default", 0),
-        "tax_category": f"{profile['tax_category']} - {company.abbr}",
-        "taxes": [],
-    })
-
-    if sales_tax:
-        doc.append("taxes", {"tax_type": sales_tax})
-
-    if purchase_tax:
-        doc.append("taxes", {"tax_type": purchase_tax})
-
-    doc.insert(ignore_permissions=True)
 
 
 def find_tax_template_by_rate(company, rate, template_doctype, child_doctype):
@@ -599,32 +471,23 @@ def find_tax_template_by_rate(company, rate, template_doctype, child_doctype):
 def ensure_item_tax_template(company, profile):
     template_name = f"{profile['tax_name']} - {company.abbr}"
 
-    # 1️⃣ If template already exists → DO NOTHING
     if frappe.db.exists("Item Tax Template", template_name):
         return
 
     tax_account = frappe.db.get_value(
         "Account",
-        {
-            "company": company.name,
-            "account_name": profile["account_name"],
-        },
+        {"company": company.name, "account_name": profile["account_name"]},
         "name",
     )
 
     if not tax_account:
-        return  # safety
+        return
 
     doc = frappe.get_doc({
         "doctype": "Item Tax Template",
         "name": template_name,
         "company": company.name,
-        "taxes": [
-            {
-                "tax_type": tax_account,
-                "tax_rate": profile["rate"],
-            }
-        ],
+        "taxes": [{"tax_type": tax_account, "tax_rate": profile["rate"]}],
     })
 
     doc.insert(ignore_permissions=True)

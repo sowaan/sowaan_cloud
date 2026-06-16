@@ -1,3 +1,5 @@
+import DOMPurify from 'dompurify';
+
 export default function PackageCard({ pkg, selected, onSelect, popular }) {
   const hasPrice = pkg.price != null && pkg.price > 0;
   const usersLabel = pkg.users_limit > 0 ? `Up to ${pkg.users_limit} users` : 'Unlimited users';
@@ -74,7 +76,7 @@ export default function PackageCard({ pkg, selected, onSelect, popular }) {
       {pkg.description && (
         <div
           className="package-desc mb-5 text-sm leading-relaxed text-slate-500 [&_b]:font-semibold [&_b]:text-slate-700 [&_ul]:mt-1.5 [&_ul]:space-y-1 [&_li]:flex [&_li]:items-start [&_li]:gap-1.5 [&_li]:before:mt-1 [&_li]:before:h-1.5 [&_li]:before:w-1.5 [&_li]:before:shrink-0 [&_li]:before:rounded-full [&_li]:before:bg-slate-300"
-          dangerouslySetInnerHTML={{ __html: pkg.description }}
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(pkg.description) }}
         />
       )}
 

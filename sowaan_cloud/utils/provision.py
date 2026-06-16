@@ -1,17 +1,18 @@
 import frappe # type: ignore
 import subprocess
-import os
-import requests
+import shlex
 import re
-from sowaan_cloud.utils.cloud_settings import get_cloud_settings
+import os
 import json
 import pwd
-from datetime import datetime
-from datetime import date, timedelta
-
 import base64
-import json
+import requests
+from datetime import datetime, date, timedelta
+from sowaan_cloud.utils.cloud_settings import get_cloud_settings
 from frappe.utils import get_url # type: ignore
+
+# Only lowercase letters, digits, hyphens; cannot start or end with a hyphen.
+_VALID_INSTANCE_RE = re.compile(r'^[a-z0-9][a-z0-9-]*[a-z0-9]$')
 
 def frappe_user_exists():
     try:
@@ -19,13 +20,12 @@ def frappe_user_exists():
         return True
     except KeyError:
         return False
-    
+
 @frappe.whitelist()
 def create_instance(docname):
     doc = frappe.get_doc("Cloud Subscription", docname)
 
     doc.provisioning_logs = ""
-    # 4️⃣ Mark provisioning & enqueue
     doc.status = "Provisioning"
     doc.save(ignore_permissions=True)
 
@@ -57,22 +57,29 @@ def provision_from_subscription(docname):
     site_name = sub.site_name
 
     bench_path = settings.bench_path
-    sql_password = settings.get_password("sql_password")  # Replace with actual DB root password
+    sql_password = settings.get_password("sql_password")
     site_path = os.path.join(bench_path, "sites", site_name)
 
     try:
-        # 🔒 Lock intent only (DO NOT RESET STEP)
         if sub.status not in ("Provisioning", "Active"):
             sub.status = "Provisioning"
             sub.save(ignore_permissions=True)
 
         # 1️⃣ SITE
         if sub.provisioning_step in (None, "INIT"):
+            sub.reload()
+            if sub.status == "Cancelled":
+                frappe.logger("provisioning").info(f"[PROVISION] Cancelled at INIT: {sub.name}")
+                return
             create_site_if_missing(site_name, bench_path, sql_password)
             update_subscription_state(sub, step="SITE_CREATED")
 
         # 2️⃣ APPS
         if sub.provisioning_step == "SITE_CREATED":
+            sub.reload()
+            if sub.status == "Cancelled":
+                frappe.logger("provisioning").info(f"[PROVISION] Cancelled at SITE_CREATED: {sub.name}")
+                return
             pkg = frappe.get_doc("Cloud Package", sub.selected_package)
             ensure_apps(site_name, bench_path, [row.app_name for row in pkg.apps])
             enforce_site_config(site_path, {"skip_setup_wizard": 1})
@@ -82,16 +89,22 @@ def provision_from_subscription(docname):
 
         # 3️⃣ BOOTSTRAP
         if sub.provisioning_step == "APPS_INSTALLED":
-            
-
+            sub.reload()
+            if sub.status == "Cancelled":
+                frappe.logger("provisioning").info(f"[PROVISION] Cancelled at APPS_INSTALLED: {sub.name}")
+                return
             bootstrap_site(site_name, sub)
             update_subscription_state(sub, step="BOOTSTRAPPED")
 
         # 4️⃣ COMPLETE
         if sub.provisioning_step == "BOOTSTRAPPED":
+            sub.reload()
+            if sub.status == "Cancelled":
+                frappe.logger("provisioning").info(f"[PROVISION] Cancelled at BOOTSTRAPPED: {sub.name}")
+                return
             run_migrate(site_name, bench_path)
             create_cloudflare_dns(site_name)
-        
+
             frappe.enqueue(
                 "sowaan_cloud.utils.ssl.issue_ssl_async",
                 queue="long",
@@ -100,12 +113,16 @@ def provision_from_subscription(docname):
                 timeout=900,
             )
 
-
             update_subscription_state(
                 sub,
                 status="Active",
                 step="COMPLETED",
             )
+
+            if not _site_is_healthy(site_name):
+                frappe.logger("provisioning").warning(
+                    f"[HEALTH] {site_name} marked Active but did not respond to health check — may still be initializing."
+                )
 
     except Exception as e:
         raw = getattr(e, "output_combined", None) or getattr(e, "stderr", None) or str(e)
@@ -116,12 +133,19 @@ def provision_from_subscription(docname):
             step=sub.provisioning_step,
             error=f"{err['message']}\n\n{raw}",
         )
-
         raise
 
 
+def _site_is_healthy(site_name):
+    try:
+        r = requests.get(f"https://{site_name}", timeout=15, allow_redirects=True)
+        return r.status_code < 500
+    except Exception:
+        return False
+
+
 def get_branding_payload(sub):
-    base_url = get_url()  # sowaan.cloud (or whatever panel site)
+    base_url = get_url()
 
     def abs_url(path):
         if not path:
@@ -141,32 +165,28 @@ def get_branding_payload(sub):
     }
 
 
-
 def create_site_if_missing(site_name, bench_path, sql_password):
     site_path = os.path.join(bench_path, "sites", site_name)
 
     if os.path.isdir(site_path):
-        frappe.logger("provisioning").info(
-            f"[SITE] Already exists: {site_name}"
-        )
-        return False  # not created
+        frappe.logger("provisioning").info(f"[SITE] Already exists: {site_name}")
+        return False
 
-    frappe.logger("provisioning").info(
-        f"[SITE] Creating new site: {site_name}"
-    )
+    frappe.logger("provisioning").info(f"[SITE] Creating new site: {site_name}")
 
     run_as_frappe(
-        f"bench new-site {site_name} "
+        f"bench new-site {shlex.quote(site_name)} "
         f"--admin-password admin "
-        f"--db-root-password {sql_password}",
+        f"--db-root-password {shlex.quote(sql_password)}",
         bench_path,
     )
 
-    return True  # created
+    return True
+
 
 def get_installed_apps(site_name, bench_path):
     result = run_as_frappe(
-        f"bench --site {site_name} list-apps",
+        f"bench --site {shlex.quote(site_name)} list-apps",
         bench_path,
         capture_output=True,
     )
@@ -181,25 +201,21 @@ def get_installed_apps(site_name, bench_path):
     }
 
 
-
 def ensure_apps(site_name, bench_path, apps_to_install):
     installed = get_installed_apps(site_name, bench_path)
 
     for app in apps_to_install:
         if app in installed:
-            frappe.logger("provisioning").info(
-                f"[APPS] {app} already installed, skipping"
-            )
+            frappe.logger("provisioning").info(f"[APPS] {app} already installed, skipping")
             continue
 
-        frappe.logger("provisioning").info(
-            f"[APPS] Installing {app}"
-        )
+        frappe.logger("provisioning").info(f"[APPS] Installing {app}")
 
         run_as_frappe(
-            f"bench --site {site_name} install-app {app}",
+            f"bench --site {shlex.quote(site_name)} install-app {shlex.quote(app)}",
             bench_path,
         )
+
 
 def enforce_site_config(site_path, updates=None):
     if updates is None:
@@ -223,9 +239,8 @@ def enforce_site_config(site_path, updates=None):
         with open(config_path, "w") as f:
             json.dump(config, f, indent=2)
 
-        frappe.logger("provisioning").info(
-            f"[CONFIG] site_config.json updated"
-        )
+        frappe.logger("provisioning").info(f"[CONFIG] site_config.json updated")
+
 
 def enforce_trial_validity(site_path, days):
     valid_till = (date.today() + timedelta(days=days)).isoformat()
@@ -241,14 +256,12 @@ def enforce_trial_validity(site_path, days):
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
 
-    frappe.logger("provisioning").info(
-        f"[TRIAL] quota.valid_till set to {valid_till}"
-    )
+    frappe.logger("provisioning").info(f"[TRIAL] quota.valid_till set to {valid_till}")
+
 
 def bootstrap_site(site_name, doc):
     settings = get_cloud_settings()
     user_password = doc.get_password("user_password")
-    # branding = get_branding_payload(doc)
     branding = None
 
     pkg = frappe.get_doc("Cloud Package", doc.selected_package)
@@ -273,22 +286,21 @@ def bootstrap_site(site_name, doc):
     bench_path = settings.bench_path
 
     run_as_frappe(
-        f"bench --site {site_name} execute "
+        f"bench --site {shlex.quote(site_name)} execute "
         f"sowaan_client.sowaan_client.run.bootstrap_site "
-        f"--kwargs '{safe_kwargs}'",
+        f"--kwargs {shlex.quote(safe_kwargs)}",
         bench_path,
     )
 
 
 def run_migrate(site_name, bench_path):
-    frappe.logger("provisioning").info(
-        f"[MIGRATE] Running migrations for {site_name}"
-    )
+    frappe.logger("provisioning").info(f"[MIGRATE] Running migrations for {site_name}")
 
     run_as_frappe(
-        f"bench --site {site_name} migrate",
+        f"bench --site {shlex.quote(site_name)} migrate",
         bench_path,
     )
+
 
 def append_log(sub, message):
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -296,6 +308,7 @@ def append_log(sub, message):
         (sub.provisioning_logs or "") + f"\n[{ts}] {message}"
     )
     sub.save(ignore_permissions=True)
+
 
 def update_subscription_state(sub, status=None, step=None, error=None):
     if status:
@@ -309,11 +322,11 @@ def update_subscription_state(sub, status=None, step=None, error=None):
     append_log(sub, f"{sub.provisioning_step}")
     frappe.db.commit()
 
+
 def run_as_frappe(cmd, bench_path, capture_output=False):
     bench_path = os.path.abspath(bench_path)
-    full_cmd = f"cd {bench_path} && {cmd}"
+    full_cmd = f"cd {shlex.quote(bench_path)} && {cmd}"
 
-    # always capture both so errors from bench execute (which writes to stdout) are visible
     run_kwargs = {
         "text": True,
         "stdout": subprocess.PIPE,
@@ -342,62 +355,13 @@ def run_as_frappe(cmd, bench_path, capture_output=False):
     except subprocess.CalledProcessError as e:
         output = "\n".join(filter(None, [e.stdout, e.stderr]))
         frappe.logger("provisioning").error(f"[CMD FAILED] {cmd}\n{output}")
-        # attach combined output so provision_from_subscription can log it
         e.output_combined = output
         raise
 
 
-
-
-# def run_as_frappe(cmd, bench_path, capture_output=False):
-#     """
-#     Run bench command as frappe user if available,
-#     otherwise run as current user.
-#     """
-
-#     bench_path = os.path.abspath(bench_path)
-
-#     full_cmd = f"cd {bench_path} && {cmd}"
-
-#     if frappe_user_exists():
-#         subprocess.run(
-#             ["sudo", "-u", "frappe", "bash", "-lc", full_cmd],
-#             check=True,
-#             capture_output=capture_output,
-#         )
-#     else:
-#         # fallback: current user
-#         subprocess.run(
-#             ["bash", "-lc", full_cmd],
-#             check=True,
-#             capture_output=capture_output,
-#         )
-
-
-
-# def run_migrate(site_name, bench_path=None):
-#     subprocess.run(
-#         ["bench", "--site", site_name, "migrate"],
-#         cwd=bench_path,
-#         check=True,
-#     )
-
-#     # 🔥 CRITICAL: reload framework state
-#     subprocess.run(
-#         ["bench", "restart"],
-#         cwd=bench_path,
-#         check=True,
-#     )
-
-
-
 def analyze_provisioning_error(raw_error: str) -> dict:
-    """
-    Returns a structured, safe error response
-    """
     error = raw_error.lower() if raw_error else ""
 
-    # --- DB AUTH ERRORS ---
     if "access denied for user" in error or "1045" in error:
         return {
             "code": "DB_AUTH_FAILED",
@@ -412,7 +376,6 @@ def analyze_provisioning_error(raw_error: str) -> dict:
             "severity": "error",
         }
 
-    # --- SITE EXISTS ---
     if "already exists" in error:
         return {
             "code": "SITE_EXISTS",
@@ -424,7 +387,6 @@ def analyze_provisioning_error(raw_error: str) -> dict:
             "severity": "info",
         }
 
-    # --- PERMISSION ERRORS ---
     if "permission denied" in error:
         return {
             "code": "PERMISSION_DENIED",
@@ -436,7 +398,6 @@ def analyze_provisioning_error(raw_error: str) -> dict:
             "severity": "error",
         }
 
-    # --- FALLBACK ---
     return {
         "code": "UNKNOWN_ERROR",
         "title": "Provisioning Failed",
@@ -446,6 +407,7 @@ def analyze_provisioning_error(raw_error: str) -> dict:
         ),
         "severity": "error",
     }
+
 
 def cloudflare_headers(settings):
     token = settings.get_password("cloudflare_api_secret")
@@ -457,6 +419,7 @@ def cloudflare_headers(settings):
         "Authorization": f"Bearer {token.strip()}",
         "Content-Type": "application/json",
     }
+
 
 def cloudflare_dns_exists(site_name):
     settings = get_cloud_settings()
@@ -472,6 +435,7 @@ def cloudflare_dns_exists(site_name):
     data = r.json()
     return bool(data.get("result"))
 
+
 def create_cloudflare_dns(site_name):
     settings = get_cloud_settings()
 
@@ -479,13 +443,10 @@ def create_cloudflare_dns(site_name):
         return
 
     if cloudflare_dns_exists(site_name):
-        frappe.logger("provisioning").info(
-            f"[DNS] Record already exists: {site_name}"
-        )
+        frappe.logger("provisioning").info(f"[DNS] Record already exists: {site_name}")
         return
-    
-    zone_id = settings.get_password("cloudflare_zone_domain")
 
+    zone_id = settings.get_password("cloudflare_zone_domain")
     headers = cloudflare_headers(settings)
 
     payload = {
@@ -501,6 +462,5 @@ def create_cloudflare_dns(site_name):
     r = requests.post(url, json=payload, headers=headers, timeout=10)
     data = r.json()
 
-    # frappe.log_error("DNS Creation Result", f"data values: \n{data}")
     if not data.get("success"):
         raise Exception(data)

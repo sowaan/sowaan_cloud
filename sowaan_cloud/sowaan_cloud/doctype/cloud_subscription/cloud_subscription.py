@@ -1,6 +1,7 @@
 # Copyright (c) 2026, Sowaan and contributors
 # For license information, please see license.txt
 
+import re
 import frappe
 from frappe.model.document import Document
 
@@ -8,6 +9,9 @@ from frappe.model.document import Document
 class CloudSubscription(Document):
 	pass
 
+
+# Only lowercase letters, digits, hyphens; cannot start or end with a hyphen; min 2 chars.
+_VALID_INSTANCE_RE = re.compile(r'^[a-z0-9][a-z0-9-]*[a-z0-9]$')
 
 # ── Rate-limit constants ───────────────────────────────────────────────────────
 _RL_MAX_REQUESTS = 5      # max submissions per IP
@@ -27,18 +31,21 @@ def _check_rate_limit():
 	"""
 	Allow at most _RL_MAX_REQUESTS from a single IP within _RL_WINDOW_SEC.
 	Uses Redis INCR + EXPIRE for an atomic, fixed-window counter.
-	Silently passes if Redis is unreachable so a cache outage never blocks signups.
+	Fails open if Redis is unreachable so a cache outage never blocks signups.
 	"""
 	ip  = _get_client_ip()
 	key = f"cloud_sub_rl:{ip}"
 
 	try:
 		redis = frappe.cache()
-		count = redis.incr(key)          # atomic increment; creates key at 0 if missing
+		count = redis.incr(key)
 		if count == 1:
-			redis.expire(key, _RL_WINDOW_SEC)   # set TTL only on first hit in window
+			redis.expire(key, _RL_WINDOW_SEC)
 	except Exception:
-		return   # Redis unavailable — fail open rather than block legitimate users
+		frappe.logger("provisioning").warning(
+			f"[RATE LIMIT] Redis unavailable — rate limiting skipped for IP {ip}"
+		)
+		return
 
 	if count > _RL_MAX_REQUESTS:
 		frappe.local.response["http_status_code"] = 429
@@ -54,14 +61,12 @@ def _check_rate_limit():
 def get_packages():
 	"""Return all Cloud Package records for the public onboarding form."""
 	try:
-		# price / users_limit are new fields — only available after bench migrate
 		pkgs = frappe.get_all(
 			"Cloud Package",
 			fields=["name", "title", "price", "users_limit", "description"],
 			order_by="creation asc",
 		)
 	except Exception:
-		# Columns don't exist yet — return without them; frontend fallback fills the gap
 		pkgs = frappe.get_all(
 			"Cloud Package",
 			fields=["name", "title", "description"],
@@ -108,6 +113,13 @@ def create_subscription(
 		if not value or not str(value).strip():
 			frappe.throw(f"{label} is required", frappe.MandatoryError)
 
+	if not _VALID_INSTANCE_RE.match(instance_name):
+		frappe.throw(
+			"Instance name may only contain lowercase letters, numbers, and hyphens, "
+			"and cannot start or end with a hyphen.",
+			frappe.ValidationError,
+		)
+
 	if len(user_password) < 8:
 		frappe.throw("Password must be at least 8 characters.")
 
@@ -122,6 +134,7 @@ def create_subscription(
 		frappe.throw(f'Package "{selected_package}" does not exist.')
 
 	# ── Create ────────────────────────────────────────────────────────────────
+	client_ip = _get_client_ip()
 	doc = frappe.get_doc({
 		"doctype": "Cloud Subscription",
 		"company_name": company_name,
@@ -131,9 +144,9 @@ def create_subscription(
 		"user_password": user_password,
 		"selected_package": selected_package,
 		"country": country,
-		"currency": "SAR",        # always SAR — not user-controlled
+		"currency": "SAR",
 		"status": "Provisioning",
-		"provisioning_logs": "",
+		"provisioning_logs": f"[REQUEST] Created from IP: {client_ip}",
 	})
 	doc.insert(ignore_permissions=True)
 	frappe.db.commit()
